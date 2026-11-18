@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>inkstudio</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="toolbar">
+        <div class="toolbar-group">
+          <button class="btn" data-action="open" title="Open a presentation folder (⌘O)">Open…</button>
+          <button class="btn" data-action="new" title="New presentation (⇧⌘N)">New</button>
+        </div>
+        <div class="toolbar-title">
+          <span id="deck-title">inkstudio</span>
+          <span id="deck-dir" class="muted"></span>
+        </div>
+        <div class="toolbar-group">
+          <div class="segmented" role="tablist" aria-label="View">
+            <button role="tab" aria-selected="true" data-view="editor">Editor</button>
+            <button role="tab" aria-selected="false" data-view="presenter" title="Presenter view (⌘2)">Presenter</button>
+          </div>
+          <button class="btn" data-action="toggle-preview" aria-pressed="true" title="Toggle preview (⌘P)" data-for="editor">Preview</button>
+          <button class="btn" data-action="toggle-notes" aria-pressed="true" title="Toggle notes (⇧⌘O)" data-for="presenter" hidden>Notes</button>
+          <div class="menu-wrap">
+            <button class="btn" id="export-btn" data-action="export-menu" aria-haspopup="menu" aria-expanded="false" aria-controls="export-menu">Export ▾</button>
+            <div class="menu" id="export-menu" role="menu" hidden>
+              <button role="menuitem" data-export="pdf"><span>PDF…</span><kbd>⌘E</kbd></button>
+              <button role="menuitem" data-export="pptx"><span>PowerPoint (.pptx)…</span><kbd>⇧⌘E</kbd></button>
+              <button role="menuitem" data-export="odp"><span>OpenDocument (.odp)…</span></button>
+              <p class="menu-note">PowerPoint and OpenDocument slides are pictures, with your notes as speaker notes.</p>
+            </div>
+          </div>
+          <button class="btn" data-action="toggle-inspector" aria-pressed="true" title="Toggle inspector (⌥⌘I)">Inspector</button>
+        </div>
+      </header>
+
+      <div class="stage-row">
+      <main class="workspace" id="workspace" hidden>
+        <nav class="sidebar" id="sidebar" aria-label="Files"></nav>
+        <section class="editor-pane">
+          <div class="editor-header">
+            <span id="file-name"></span>
+            <span id="file-state" class="muted"></span>
+          </div>
+          <div id="editor" class="editor"></div>
+        </section>
+        <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" tabindex="0"></div>
+        <section class="preview-pane" id="preview-pane">
+          <div class="preview-stage" id="preview-stage">
+            <div class="preview-frame" id="preview-frame"></div>
+            <div class="preview-message" id="preview-message" hidden></div>
+          </div>
+          <div class="preview-footer">
+            <button class="icon-btn" data-action="prev" title="Previous slide" aria-label="Previous slide">‹</button>
+            <span id="slide-pos" class="mono">–</span>
+            <button class="icon-btn" data-action="next" title="Next slide" aria-label="Next slide">›</button>
+            <span class="spacer"></span>
+            <span id="page-size" class="muted mono"></span>
+          </div>
+          <div class="problems" id="problems" hidden></div>
+        </section>
+      </main>
+
+      <main class="presenter" id="presenter" hidden>
+        <nav class="strip" aria-label="Slides">
+          <div class="preview-frame" id="strip-frame"></div>
+        </nav>
+        <section class="present-main">
+          <div class="frontmatter" id="frontmatter" aria-label="Frontmatter"></div>
+          <div class="present-stage">
+            <div class="preview-frame" id="present-frame"></div>
+            <div class="preview-message" id="present-message" hidden></div>
+          </div>
+          <div class="splitter-h" id="notes-splitter" role="separator" aria-orientation="horizontal" tabindex="0"></div>
+          <section class="notes" id="notes" aria-label="Speaker notes">
+            <h2>Notes</h2>
+            <div class="notes-body" id="notes-body"></div>
+          </section>
+        </section>
+      </main>
+
+      <section class="welcome" id="welcome">
+        <div class="welcome-card">
+          <h1>inkstudio</h1>
+          <p class="muted">Open a folder of Markdown slides: an inkpress pack with <code>settings.toml</code> and <code>slides/</code>.</p>
+          <div class="welcome-actions">
+            <button class="btn primary" data-action="open">Open folder…</button>
+            <button class="btn" data-action="new">New presentation</button>
+          </div>
+          <p class="error" id="welcome-error" hidden></p>
+        </div>
+      </section>
+
+      <aside class="inspector" id="inspector" aria-label="Inspector" hidden></aside>
+      </div>
+
+      <footer class="statusbar">
+        <span id="status"></span>
+        <button class="link-btn" id="status-action" hidden></button>
+        <span class="spacer"></span>
+        <span id="render-status" class="muted"></span>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

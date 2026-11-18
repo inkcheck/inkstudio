@@ -1,0 +1,4 @@
+node_modules/
+# Built by `make frontend`; the placeholder keeps go:embed happy before then.
+dist/*
+!dist/.gitkeep
