@@ -1,6 +1,6 @@
-# inkstudio
+# InkStudio
 
-inkstudio is a desktop app for [inkpress](../inkpress) slide packs. It opens a
+InkStudio is a desktop app for [inkpress](../inkpress) slide packs. It opens a
 folder of Markdown slides, edits them with a live preview, and (in later
 phases) presents and exports them. It is a [Wails](https://wails.io) v3 app:
 Go for the backend, which uses inkpress as a library, and the system webview
@@ -23,10 +23,31 @@ draws differently, which is why the thumbnails use transforms).
 Building needs Go, Node and pnpm. inkpress is found at `../inkpress` through
 a `replace` in go.mod, until it publishes its library packages.
 
+## Installing on a Mac
+
+```sh
+make install          # build, sign, notarise and copy InkStudio.app to /Applications
+make dmg              # build/InkStudio-<version>.dmg, notarised, to share
+make release-check    # check the certificate and notarytool profile
+```
+
+`make app` builds `build/InkStudio.app`, one binary for Apple silicon and
+Intel, ad-hoc signed for this Mac. `make notarize`, `make dmg` and `make
+install` sign it with the first "Developer ID Application" certificate in
+the keychain, with the hardened runtime, have Apple notarise it with the
+`inkcheck-notary` notarytool profile (inkpress's `make notary-setup` makes
+it), and staple the ticket. `MACOS_SIGN_IDENTITY` and `MACOS_NOTARY_PROFILE`
+override them, as for inkpress. The version comes from the latest `vX.Y.Z`
+tag, or 0.1.0.
+
+The app registers `.inktheme` files, so a double-click imports a theme into
+the open presentation, and opens a folder dropped on its Dock icon.
+`make icon` redraws the icon from `tools/make-icon/icon.swift`.
+
 ## Phase 1: editor view
 
 - **Open** a pack (⌘O) or start a **new** one from inkpress's sample (⇧⌘N).
-  inkstudio reopens the last pack on start.
+  InkStudio reopens the last pack on start.
 - The **sidebar** lists `settings.toml`, `README.md` and the slides, with
   each slide's number in the deck. A struck-through slide has `skip: true`.
 - The **editor** highlights Markdown and marks what inkpress gives meaning to:
@@ -36,7 +57,7 @@ a `replace` in go.mod, until it publishes its library packages.
   and warnings appear under it, and the last good preview stays up.
 - Edits **save themselves** a moment after you stop typing; ⌘S saves at
   once. Changes made on disk by other editors or git are picked up.
-- Diagrams need `inkline` on the PATH, as for inkpress. inkstudio adds
+- Diagrams need `inkline` on the PATH, as for inkpress. InkStudio adds
   `/opt/homebrew/bin`, `/usr/local/bin` and `~/go/bin` to the PATH, since an
   app started from the Finder gets a minimal one.
 

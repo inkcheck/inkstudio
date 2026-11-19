@@ -1,4 +1,4 @@
-// Command inkstudio is a desktop editor and viewer for inkpress slide packs.
+// Command inkstudio is InkStudio, a desktop editor and viewer for inkpress slide packs.
 package main
 
 import (
@@ -12,12 +12,16 @@ import (
 	"strings"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 
 	"github.com/inkcheck/inkstudio/internal/studio"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+// version is set by scripts/package.sh.
+var version = "dev"
 
 func main() {
 	fixPath()
@@ -87,15 +91,15 @@ func main() {
 		},
 		Opened: func(info *studio.ProjectInfo) {
 			if window != nil {
-				window.SetTitle(info.Title + " — inkstudio")
+				window.SetTitle(info.Title + " — InkStudio")
 			}
 			saveState(state{LastDir: info.Dir})
 		},
 	})
 
 	app = application.New(application.Options{
-		Name:        "inkstudio",
-		Description: "Edit and present inkpress slides",
+		Name:        "InkStudio",
+		Description: "Edit and present inkpress slides (" + version + ")",
 		Assets: application.AssetOptions{
 			Handler:    application.BundledAssetFileServer(dist),
 			Middleware: st.Middleware,
@@ -108,7 +112,7 @@ func main() {
 	app.Menu.Set(appMenu(app, st))
 
 	window = app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:              "inkstudio",
+		Title:              "InkStudio",
 		Width:              1440,
 		Height:             900,
 		MinWidth:           900,
@@ -118,18 +122,28 @@ func main() {
 		BackgroundColour:   application.NewRGB(30, 30, 32),
 	})
 
-	// A folder on the command line, or the last one opened.
-	dir := ""
-	if len(os.Args) > 1 {
+	// A folder on the command line, or the last one opened. The Finder
+	// passes no folder here; it sends ApplicationOpenedWithFile instead.
+	dir := loadState().LastDir
+	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") {
 		dir = os.Args[1]
-	} else {
-		dir = loadState().LastDir
 	}
 	if dir != "" {
 		if _, err := st.OpenDir(dir); err != nil {
 			log.Println("inkstudio:", err)
 		}
 	}
+
+	// A folder or .inktheme opened from the Finder, dropped on the Dock
+	// icon, or passed to `open -a InkStudio`.
+	app.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(e *application.ApplicationEvent) {
+		path := e.Context().Filename()
+		go func() {
+			if err := st.OpenPath(path); err != nil {
+				app.Dialog.Error().SetTitle("InkStudio").SetMessage(err.Error()).Show()
+			}
+		}()
+	})
 
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
@@ -139,7 +153,7 @@ func main() {
 func appMenu(app *application.App, st *studio.Studio) *application.Menu {
 	report := func(err error) {
 		if err != nil {
-			app.Dialog.Error().SetTitle("inkstudio").SetMessage(err.Error()).Show()
+			app.Dialog.Error().SetTitle("InkStudio").SetMessage(err.Error()).Show()
 		}
 	}
 	menu := app.NewMenu()

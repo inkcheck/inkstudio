@@ -117,7 +117,7 @@ func esc(s string) string {
 func metaXML(d Deck, created time.Time) string {
 	ts := created.UTC().Format("2006-01-02T15:04:05")
 	return xmlH + `<office:document-meta ` + ns + `><office:meta>` +
-		`<meta:generator>inkstudio</meta:generator>` +
+		`<meta:generator>InkStudio</meta:generator>` +
 		`<dc:title>` + esc(d.Title) + `</dc:title>` +
 		`<meta:initial-creator>` + esc(d.Author) + `</meta:initial-creator>` +
 		`<meta:creation-date>` + ts + `</meta:creation-date>` +

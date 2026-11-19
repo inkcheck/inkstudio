@@ -1,7 +1,7 @@
-# inkstudio. Run `make` or `make help` for the list of targets.
+# InkStudio. Run `make` or `make help` for the list of targets.
 
 .DEFAULT_GOAL := help
-.PHONY: help frontend build run web snap test clean
+.PHONY: help frontend build run web snap test app notarize dmg install release-check icon clean
 
 export MACOSX_DEPLOYMENT_TARGET := 13.0
 export CGO_LDFLAGS := -mmacosx-version-min=13.0
@@ -37,5 +37,26 @@ test: ## Run the Go tests and type-check the frontend
 	go test ./...
 	cd frontend && pnpm run check
 
+app: ## Build build/InkStudio.app: universal, ad-hoc signed, for this Mac
+	./scripts/package.sh app
+
+notarize: app ## Sign the app with Developer ID, notarise and staple it
+	./scripts/package.sh notarize
+
+dmg: app ## Make build/InkStudio-<version>.dmg, signed, notarised and stapled
+	./scripts/package.sh dmg
+
+install: app ## Notarise the app and install it in /Applications
+	./scripts/package.sh install
+
+release-check: ## Check the certificate and notarytool profile signing needs
+	./scripts/package.sh check
+
+icon: ## Redraw packaging/inkstudio.icns
+	@mkdir -p bin
+	swiftc -O tools/make-icon/icon.swift -o bin/make-icon
+	rm -rf bin/inkstudio.iconset && bin/make-icon bin/inkstudio.iconset
+	iconutil -c icns bin/inkstudio.iconset -o packaging/inkstudio.icns
+
 clean: ## Remove build output
-	rm -rf bin frontend/dist
+	rm -rf bin build frontend/dist/assets frontend/dist/index.html

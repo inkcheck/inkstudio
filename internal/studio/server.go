@@ -348,35 +348,72 @@ func decode(r *http.Request, v any) error {
 }
 
 func (s *Studio) importTheme() (map[string]string, error) {
-	p := s.current()
-	if p == nil {
+	if s.current() == nil {
 		return nil, errNoProject
 	}
 	if s.host.ChooseFile == nil {
 		return nil, errors.New("opening files is not available here")
 	}
-	file, err := s.host.ChooseFile("Import a theme", "inkstudio theme", []string{"inktheme", "zip"})
+	file, err := s.host.ChooseFile("Import a theme", "InkStudio theme", []string{"inktheme", "zip"})
 	if err != nil || file == "" {
 		return map[string]string{"name": ""}, err
 	}
+	name, err := s.ImportThemeFile(file)
+	return map[string]string{"name": name}, err
+}
+
+// EventThemeImported carries {"name": ...} after a theme is imported from
+// outside the app's own dialog, such as a double-click in the Finder.
+const EventThemeImported = "theme:imported"
+
+// ImportThemeFile imports an .inktheme into the open pack, asking before it
+// replaces a template. It returns the template's name, or "" when the user
+// cancels.
+func (s *Studio) ImportThemeFile(file string) (string, error) {
+	p := s.current()
+	if p == nil {
+		return "", errors.New("open a presentation first, then import the theme into it")
+	}
 	name, err := ThemeName(file)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	replace := false
 	if p.TemplateExists(name) {
 		if s.host.Confirm == nil || !s.host.Confirm("Replace the template?",
 			fmt.Sprintf("This presentation already has a template called “%s”. Replace it with the one in %s?", name, filepath.Base(file)),
 			"Replace") {
-			return map[string]string{"name": ""}, nil
+			return "", nil
 		}
 		replace = true
 	}
 	if err := p.ImportTheme(file, name, replace); err != nil {
-		return nil, err
+		return "", err
 	}
 	p.diagrams.Reset()
-	return map[string]string{"name": name}, nil
+	return name, nil
+}
+
+// OpenPath opens what the Finder hands the app: a pack folder, or an
+// .inktheme to import into the open pack.
+func (s *Studio) OpenPath(path string) error {
+	st, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if st.IsDir() {
+		_, err := s.OpenDir(path)
+		return err
+	}
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext != InkthemeExt && ext != ".zip" {
+		return fmt.Errorf("InkStudio opens presentation folders and %s files, not %s", InkthemeExt, filepath.Base(path))
+	}
+	name, err := s.ImportThemeFile(path)
+	if err == nil && name != "" {
+		s.emit(EventThemeImported, map[string]string{"name": name})
+	}
+	return err
 }
 
 func (s *Studio) exportTheme(name string) (map[string]string, error) {
@@ -388,7 +425,7 @@ func (s *Studio) exportTheme(name string) (map[string]string, error) {
 		return nil, errors.New("saving files is not available here")
 	}
 	home, _ := os.UserHomeDir()
-	out, err := s.host.ChooseSave("Export the template as a theme", filepath.Join(home, "Desktop", name+InkthemeExt), "inkstudio theme", "inktheme")
+	out, err := s.host.ChooseSave("Export the template as a theme", filepath.Join(home, "Desktop", name+InkthemeExt), "InkStudio theme", "inktheme")
 	if err != nil || out == "" {
 		return map[string]string{"path": ""}, err
 	}

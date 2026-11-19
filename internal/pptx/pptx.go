@@ -102,7 +102,7 @@ func Write(w io.Writer, d Deck) error {
 			rel{"rId3", relNS + "/extended-properties", "docProps/app.xml"},
 		)},
 		{"docProps/core.xml", coreXML(d, created)},
-		{"docProps/app.xml", fmt.Sprintf(xmlH+`<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>inkstudio</Application><Slides>%d</Slides><Notes>%d</Notes></Properties>`, n, notes)},
+		{"docProps/app.xml", fmt.Sprintf(xmlH+`<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>InkStudio</Application><Slides>%d</Slides><Notes>%d</Notes></Properties>`, n, notes)},
 		{"ppt/presentation.xml", presentationXML(n, cx, cy)},
 		{"ppt/_rels/presentation.xml.rels", presentationRels(n)},
 		{"ppt/presProps.xml", xmlH + `<p:presentationPr ` + pNS + `/>`},
@@ -345,15 +345,15 @@ func listItem(t string) bool {
 	return i > 0 && i+1 < len(t) && (t[i] == '.' || t[i] == ')') && t[i+1] == ' '
 }
 
-const themeXML = xmlH + `<a:theme xmlns:a="` + nsA + `" name="inkstudio"><a:themeElements>` +
-	`<a:clrScheme name="inkstudio"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1>` +
+const themeXML = xmlH + `<a:theme xmlns:a="` + nsA + `" name="InkStudio"><a:themeElements>` +
+	`<a:clrScheme name="InkStudio"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1>` +
 	`<a:dk2><a:srgbClr val="1F2937"/></a:dk2><a:lt2><a:srgbClr val="F3F4F6"/></a:lt2>` +
 	`<a:accent1><a:srgbClr val="0F62FE"/></a:accent1><a:accent2><a:srgbClr val="24A148"/></a:accent2><a:accent3><a:srgbClr val="8A3FFC"/></a:accent3>` +
 	`<a:accent4><a:srgbClr val="F1C21B"/></a:accent4><a:accent5><a:srgbClr val="DA1E28"/></a:accent5><a:accent6><a:srgbClr val="007D79"/></a:accent6>` +
 	`<a:hlink><a:srgbClr val="0F62FE"/></a:hlink><a:folHlink><a:srgbClr val="8A3FFC"/></a:folHlink></a:clrScheme>` +
-	`<a:fontScheme name="inkstudio"><a:majorFont><a:latin typeface="Calibri Light"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont>` +
+	`<a:fontScheme name="InkStudio"><a:majorFont><a:latin typeface="Calibri Light"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont>` +
 	`<a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme>` +
-	`<a:fmtScheme name="inkstudio">` +
+	`<a:fmtScheme name="InkStudio">` +
 	`<a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst>` +
 	`<a:lnStyleLst><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="12700"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="19050"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst>` +
 	`<a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst>` +

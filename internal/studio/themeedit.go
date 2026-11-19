@@ -155,7 +155,7 @@ func (p *Project) DuplicateTheme(template, theme, name string) error {
 	if err != nil {
 		return err
 	}
-	header := fmt.Sprintf("/* %s: made from %s in inkstudio. */\n", name, theme)
+	header := fmt.Sprintf("/* %s: made from %s in InkStudio. */\n", name, theme)
 	if _, err := f.WriteString(header + string(src)); err != nil {
 		f.Close()
 		return err

@@ -1,4 +1,4 @@
-// Package studio is inkstudio's backend: it opens an inkpress pack, reads and
+// Package studio is InkStudio's backend: it opens an inkpress pack, reads and
 // writes its files, renders previews and watches the pack for changes. The
 // frontend talks to it over HTTP on the Wails asset server (see server.go).
 package studio

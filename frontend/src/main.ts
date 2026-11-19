@@ -142,7 +142,7 @@ async function setProject(info: ProjectInfo | null) {
     templates = [];
     settings = null;
   }
-  els.title.textContent = info?.title ?? "inkstudio";
+  els.title.textContent = info?.title ?? "InkStudio";
   els.dir.textContent = info ? shortDir(info.dir) : "";
   els.dir.title = info?.dir ?? "";
   els.exportBtn.disabled = !info;
@@ -882,6 +882,14 @@ Events.On("menu:toggle-preview", () => togglePreview());
 Events.On("menu:toggle-notes", () => view === "presenter" && toggleNotes());
 Events.On("menu:toggle-inspector", () => project && toggleInspector());
 Events.On("menu:import-theme", () => void importTheme());
+Events.On("theme:imported", (ev) => {
+  const name = (ev.data as { name: string }).name;
+  void refreshTemplates();
+  showStatus(`Imported the ${name} template`, {
+    label: "Use it",
+    run: () => void applyEdit(SETTINGS, "settings", [{ key: "template", value: name }, { key: "theme", value: null }]),
+  });
+});
 window.addEventListener("beforeunload", () => void saveAll());
 
 // Errors go to the backend's log too, where a terminal can see them.
