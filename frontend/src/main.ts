@@ -1,4 +1,4 @@
-import { Events } from "@wailsio/runtime";
+import { Events, Window } from "@wailsio/runtime";
 import { api, type Change, type DeckSettings, type ExportFormat, type FileEntry, type ProjectInfo, type RenderResult, type SlideInfo, type TemplateInfo } from "./api";
 import { Editor } from "./editor";
 import { Inspector } from "./inspector";
@@ -987,6 +987,7 @@ window.addEventListener("message", (e) => {
 Events.On("project:opened", (ev) => void setProject(ev.data as ProjectInfo));
 Events.On("project:changed", (ev) => void onDiskChange((ev.data as { paths: string[] }).paths));
 Events.On("menu:save", () => void saveAll());
+Events.On("menu:close", () => void saveAll().finally(() => Window.Close()));
 Events.On("menu:export", (ev) => void exportAs(ev.data as ExportFormat));
 Events.On("export:progress", (ev) => {
   const { done, total } = ev.data as { done: number; total: number };

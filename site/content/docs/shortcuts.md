@@ -8,6 +8,7 @@ weight: 8
 | New presentation | ⇧⌘N |
 | Open a presentation | ⌘O |
 | Save | ⌘S |
+| Close the window | ⌘W |
 | Export PDF | ⌘E |
 | Export PowerPoint, editable | ⇧⌘E |
 | Editor view | ⌘1 |

@@ -217,6 +217,13 @@ func appMenu(app *application.App, st *studio.Studio) *application.Menu {
 	file.Add("Import Theme…").OnClick(func(*application.Context) {
 		app.Event.Emit("menu:import-theme")
 	})
+	file.AddSeparator()
+	// The frontend saves its buffers, then closes the window. Closing the
+	// last window quits, so closing straight away could lose the edits
+	// autosave has not written yet.
+	file.Add("Close Window").SetAccelerator("CmdOrCtrl+W").OnClick(func(*application.Context) {
+		app.Event.Emit("menu:close")
+	})
 	menu.AddRole(application.EditMenu)
 	view := menu.AddSubmenu("View")
 	view.Add("Editor").SetAccelerator("CmdOrCtrl+1").OnClick(func(*application.Context) {
