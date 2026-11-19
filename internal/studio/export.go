@@ -17,6 +17,7 @@ import (
 	"github.com/inkcheck/inkpress/render"
 
 	"github.com/inkcheck/inkstudio/platform/pptx"
+	"github.com/inkcheck/inkstudio/platform/slidedoc"
 )
 
 // Format is an export format.
@@ -138,9 +139,9 @@ func (p *Project) ExportSlides(ctx context.Context, f Format, out string, progre
 	var buf bytes.Buffer
 	switch f {
 	case FormatPPTX:
-		pd := pptx.Deck{Title: d.Title(), Author: d.Settings.Author, Width: res.Width, Height: res.Height}
+		pd := slidedoc.Deck{Title: d.Title(), Author: d.Settings.Author, Width: res.Width, Height: res.Height}
 		for i, r := range res.Slides {
-			pd.Slides = append(pd.Slides, pptx.Slide{PNG: images[i], Title: r.Title, Notes: d.Slides[i].Notes})
+			pd.Slides = append(pd.Slides, slidedoc.Picture(images[i], res.Width, res.Height, r.Title, d.Slides[i].Notes))
 		}
 		err = pptx.Write(&buf, pd)
 	default:

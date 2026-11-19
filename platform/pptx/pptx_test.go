@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/inkcheck/inkstudio/platform/slidedoc"
 )
 
 func tinyPNG(t *testing.T) []byte {
@@ -64,13 +66,16 @@ func Check(t *testing.T, data []byte) map[string][]byte {
 			t.Errorf("%s has no content type override", name)
 		}
 	}
-	target := regexp.MustCompile(`Target="([^"]+)"`)
+	target := regexp.MustCompile(`Target="([^"]+)"(?: TargetMode="(\w+)")?`)
 	for name, b := range parts {
 		if !strings.HasSuffix(name, ".rels") {
 			continue
 		}
 		base := path.Dir(path.Dir(name)) // the part the rels belong to lives here
 		for _, m := range target.FindAllStringSubmatch(string(b), -1) {
+			if m[2] == "External" {
+				continue
+			}
 			p := path.Clean(path.Join(base, m[1]))
 			if _, ok := parts[p]; !ok {
 				t.Errorf("%s points at %s, which is missing", name, p)
@@ -82,11 +87,12 @@ func Check(t *testing.T, data []byte) map[string][]byte {
 
 func TestWrite(t *testing.T) {
 	var buf bytes.Buffer
-	err := Write(&buf, Deck{
+	png := tinyPNG(t)
+	err := Write(&buf, slidedoc.Deck{
 		Title: `Q3 <review> & "plans"`, Author: "A. Presenter", Width: 1123, Height: 794,
-		Slides: []Slide{
-			{PNG: tinyPNG(t), Title: "Intro", Notes: "Hello <everyone>.\n\nSecond paragraph\ncontinues here.\n- one\n- two"},
-			{PNG: tinyPNG(t), Title: "No notes"},
+		Slides: []slidedoc.Slide{
+			slidedoc.Picture(png, 1123, 794, "Intro", "Hello <everyone>.\n\nSecond paragraph\ncontinues here.\n- one\n- two"),
+			slidedoc.Picture(png, 1123, 794, "No notes", ""),
 		},
 	})
 	if err != nil {
@@ -110,22 +116,67 @@ func TestWrite(t *testing.T) {
 	if !strings.Contains(string(parts["docProps/core.xml"]), "Q3 &lt;review&gt; &amp;") {
 		t.Error("title not escaped in core.xml")
 	}
-	if _, ok := parts["ppt/media/image2.png"]; !ok {
-		t.Error("image2.png missing")
+	if _, ok := parts["ppt/media/image2-1.png"]; !ok {
+		t.Error("image2-1.png missing")
+	}
+	if !strings.Contains(string(parts["docProps/app.xml"]), "<AppVersion>16.0000</AppVersion>") {
+		t.Error("no current application version")
 	}
 }
 
 func TestSizeLimits(t *testing.T) {
 	var buf bytes.Buffer
 	// 20000 px is 208 inches: too wide for PowerPoint, so it is scaled down.
-	if err := Write(&buf, Deck{Width: 20000, Height: 5000, Slides: []Slide{{PNG: tinyPNG(t)}}}); err != nil {
+	if err := Write(&buf, slidedoc.Deck{Width: 20000, Height: 5000, Slides: []slidedoc.Slide{slidedoc.Picture(tinyPNG(t), 20000, 5000, "", "")}}); err != nil {
 		t.Fatal(err)
 	}
 	pres := string(Check(t, buf.Bytes())["ppt/presentation.xml"])
 	if !strings.Contains(pres, `cx="51206400" cy="12801600"`) {
 		t.Errorf("not clamped: %s", pres)
 	}
-	if err := Write(&buf, Deck{Width: 100, Height: 100}); err == nil {
+	if err := Write(&buf, slidedoc.Deck{Width: 100, Height: 100}); err == nil {
 		t.Error("wrote a deck with no slides")
+	}
+}
+
+func TestEditable(t *testing.T) {
+	ink := &slidedoc.Color{R: 0x16, G: 0x16, B: 0x16, A: 1}
+	accent := &slidedoc.Color{R: 0x0f, G: 0x62, B: 0xfe, A: 0.5}
+	slide := slidedoc.Slide{
+		Background: &slidedoc.Color{R: 255, G: 255, B: 255, A: 1},
+		Items: []slidedoc.Item{
+			{Kind: slidedoc.KindRect, X: 10, Y: 10, W: 200, H: 100, Fill: accent, Radius: 8},
+			{Kind: slidedoc.KindText, X: 20, Y: 20, W: 400, H: 60, Paras: []slidedoc.Para{
+				{Align: "l", LineHeight: 40, Runs: []slidedoc.Run{
+					{Text: "Bold & ", Font: "IBM Plex Sans", Size: 32, Bold: true, Color: ink},
+					{Text: "linked", Font: "IBM Plex Sans", Size: 32, Color: ink, Href: "https://example.com/?a=1&b=2"},
+				}},
+				{Bullet: "•", Indent: 24, Before: 8, LineHeight: 30, Runs: []slidedoc.Run{{Text: "point", Font: "Arial", Size: 24}}},
+				{Bullet: "1.", Start: 3, Indent: 24, LineHeight: 30, Runs: []slidedoc.Run{{Text: "third", Font: "Arial", Size: 24}}},
+			}},
+			{Kind: slidedoc.KindImage, X: 300, Y: 200, W: 40, H: 30, PNG: tinyPNG(t), Alt: "logo"},
+		},
+	}
+	var buf bytes.Buffer
+	if err := Write(&buf, slidedoc.Deck{Width: 1280, Height: 720, Slides: []slidedoc.Slide{slide}}); err != nil {
+		t.Fatal(err)
+	}
+	parts := Check(t, buf.Bytes())
+	xml := string(parts["ppt/slides/slide1.xml"])
+	for _, want := range []string{
+		`<p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/>`,
+		`prst="roundRect"`, `<a:alpha val="50000"/>`,
+		`<a:t>Bold &amp; </a:t>`, `sz="2400" b="1"`, `<a:latin typeface="IBM Plex Sans"/>`,
+		`<a:hlinkClick r:id="rId3"/>`, `<a:buChar char="•"/>`, `<a:buAutoNum type="arabicPeriod" startAt="3"/>`,
+		`<a:lnSpc><a:spcPts val="3000"/></a:lnSpc>`, `<a:spcBef><a:spcPts val="600"/></a:spcBef>`,
+		`<p:cNvSpPr txBox="1"/>`, `descr="logo"`, `<a:off x="2857500" y="1905000"/>`,
+	} {
+		if !strings.Contains(xml, want) {
+			t.Errorf("slide lacks %s", want)
+		}
+	}
+	rels := string(parts["ppt/slides/_rels/slide1.xml.rels"])
+	if !strings.Contains(rels, `Target="https://example.com/?a=1&amp;b=2" TargetMode="External"`) {
+		t.Errorf("link relationship: %s", rels)
 	}
 }

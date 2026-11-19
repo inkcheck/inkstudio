@@ -1,6 +1,8 @@
-// Package pptx writes a PowerPoint presentation with one picture per slide
-// and the speaker notes in the notes pages. It writes the Office Open XML
-// parts by hand: one master, one blank layout, one theme, no dependencies.
+// Package pptx writes a slidedoc.Deck as a PowerPoint presentation: text
+// boxes, rectangles and pictures, with the speaker notes in the notes pages.
+// It writes the Office Open XML parts by hand, as current PowerPoint saves
+// them (Transitional, application version 16): one master, one blank layout,
+// one theme, and no dependencies.
 package pptx
 
 import (
@@ -10,26 +12,9 @@ import (
 	"io"
 	"strings"
 	"time"
+
+	"github.com/inkcheck/inkstudio/platform/slidedoc"
 )
-
-// Slide is one slide: a PNG that fills it, and its notes.
-type Slide struct {
-	PNG []byte
-	// Title is the picture's alternative text.
-	Title string
-	// Notes are plain text; blank lines separate paragraphs.
-	Notes string
-}
-
-// Deck is a presentation.
-type Deck struct {
-	Title, Author string
-	// Width and Height are the slide size in CSS pixels, 96 per inch.
-	Width, Height float64
-	Slides        []Slide
-	// Created defaults to now.
-	Created time.Time
-}
 
 // emuPerPx converts CSS pixels (96 per inch) to EMUs (914400 per inch).
 const emuPerPx = 9525
@@ -50,7 +35,7 @@ const (
 )
 
 // Write writes the presentation to w.
-func Write(w io.Writer, d Deck) error {
+func Write(w io.Writer, d slidedoc.Deck) error {
 	if len(d.Slides) == 0 {
 		return fmt.Errorf("pptx: no slides")
 	}
@@ -97,12 +82,12 @@ func Write(w io.Writer, d Deck) error {
 	parts := []struct{ name, body string }{
 		{"[Content_Types].xml", contentTypes(d.Slides)},
 		{"_rels/.rels", rels(
-			rel{"rId1", relNS + "/officeDocument", "ppt/presentation.xml"},
-			rel{"rId2", "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties", "docProps/core.xml"},
-			rel{"rId3", relNS + "/extended-properties", "docProps/app.xml"},
+			rel{"rId1", relNS + "/officeDocument", "ppt/presentation.xml", false},
+			rel{"rId2", "http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties", "docProps/core.xml", false},
+			rel{"rId3", relNS + "/extended-properties", "docProps/app.xml", false},
 		)},
 		{"docProps/core.xml", coreXML(d, created)},
-		{"docProps/app.xml", fmt.Sprintf(xmlH+`<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>InkStudio</Application><Slides>%d</Slides><Notes>%d</Notes></Properties>`, n, notes)},
+		{"docProps/app.xml", fmt.Sprintf(xmlH+`<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Microsoft Office PowerPoint</Application><AppVersion>16.0000</AppVersion><PresentationFormat>Custom</PresentationFormat><Slides>%d</Slides><Notes>%d</Notes></Properties>`, n, notes)},
 		{"ppt/presentation.xml", presentationXML(n, cx, cy)},
 		{"ppt/_rels/presentation.xml.rels", presentationRels(n)},
 		{"ppt/presProps.xml", xmlH + `<p:presentationPr ` + pNS + `/>`},
@@ -112,16 +97,16 @@ func Write(w io.Writer, d Deck) error {
 		{"ppt/theme/theme2.xml", themeXML},
 		{"ppt/slideMasters/slideMaster1.xml", masterXML},
 		{"ppt/slideMasters/_rels/slideMaster1.xml.rels", rels(
-			rel{"rId1", relNS + "/slideLayout", "../slideLayouts/slideLayout1.xml"},
-			rel{"rId2", relNS + "/theme", "../theme/theme1.xml"},
+			rel{"rId1", relNS + "/slideLayout", "../slideLayouts/slideLayout1.xml", false},
+			rel{"rId2", relNS + "/theme", "../theme/theme1.xml", false},
 		)},
 		{"ppt/slideLayouts/slideLayout1.xml", layoutXML},
 		{"ppt/slideLayouts/_rels/slideLayout1.xml.rels", rels(
-			rel{"rId1", relNS + "/slideMaster", "../slideMasters/slideMaster1.xml"},
+			rel{"rId1", relNS + "/slideMaster", "../slideMasters/slideMaster1.xml", false},
 		)},
 		{"ppt/notesMasters/notesMaster1.xml", notesMasterXML(cx, cy)},
 		{"ppt/notesMasters/_rels/notesMaster1.xml.rels", rels(
-			rel{"rId1", relNS + "/theme", "../theme/theme2.xml"},
+			rel{"rId1", relNS + "/theme", "../theme/theme2.xml", false},
 		)},
 	}
 	for _, p := range parts {
@@ -132,37 +117,49 @@ func Write(w io.Writer, d Deck) error {
 	for i, s := range d.Slides {
 		k := i + 1
 		slideRels := []rel{
-			{"rId1", relNS + "/slideLayout", "../slideLayouts/slideLayout1.xml"},
-			{"rId2", relNS + "/image", fmt.Sprintf("../media/image%d.png", k)},
-			{"rId3", relNS + "/notesSlide", fmt.Sprintf("../notesSlides/notesSlide%d.xml", k)},
+			{"rId1", relNS + "/slideLayout", "../slideLayouts/slideLayout1.xml", false},
+			{"rId2", relNS + "/notesSlide", fmt.Sprintf("../notesSlides/notesSlide%d.xml", k), false},
 		}
+		sw := slideWriter{slide: k, scale: float64(cx) / (d.Width * emuPerPx), width: d.Width, height: d.Height}
+		body := sw.write(&s)
+		slideRels = append(slideRels, sw.rels...)
+		media := sw.media
 		for _, p := range []struct{ name, body string }{
-			{fmt.Sprintf("ppt/slides/slide%d.xml", k), slideXML(k, s.Title, cx, cy)},
+			{fmt.Sprintf("ppt/slides/slide%d.xml", k), body},
 			{fmt.Sprintf("ppt/slides/_rels/slide%d.xml.rels", k), rels(slideRels...)},
 			{fmt.Sprintf("ppt/notesSlides/notesSlide%d.xml", k), notesSlideXML(s.Notes)},
 			{fmt.Sprintf("ppt/notesSlides/_rels/notesSlide%d.xml.rels", k), rels(
-				rel{"rId1", relNS + "/notesMaster", "../notesMasters/notesMaster1.xml"},
-				rel{"rId2", relNS + "/slide", fmt.Sprintf("../slides/slide%d.xml", k)},
+				rel{"rId1", relNS + "/notesMaster", "../notesMasters/notesMaster1.xml", false},
+				rel{"rId2", relNS + "/slide", fmt.Sprintf("../slides/slide%d.xml", k), false},
 			)},
 		} {
 			if err := add(p.name, p.body); err != nil {
 				return err
 			}
 		}
-		if err := addBytes(fmt.Sprintf("ppt/media/image%d.png", k), s.PNG); err != nil {
-			return err
+		for j, png := range media {
+			if err := addBytes(fmt.Sprintf("ppt/media/image%d-%d.png", k, j+1), png); err != nil {
+				return err
+			}
 		}
 	}
 	return z.Close()
 }
 
-type rel struct{ id, typ, target string }
+type rel struct {
+	id, typ, target string
+	external        bool
+}
 
 func rels(rs ...rel) string {
 	var b strings.Builder
 	b.WriteString(xmlH + `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`)
 	for _, r := range rs {
-		fmt.Fprintf(&b, `<Relationship Id="%s" Type="%s" Target="%s"/>`, r.id, r.typ, esc(r.target))
+		mode := ""
+		if r.external {
+			mode = ` TargetMode="External"`
+		}
+		fmt.Fprintf(&b, `<Relationship Id="%s" Type="%s" Target="%s"%s/>`, r.id, r.typ, esc(r.target), mode)
 	}
 	b.WriteString(`</Relationships>`)
 	return b.String()
@@ -184,7 +181,7 @@ func clean(s string) string {
 	}, s)
 }
 
-func contentTypes(slides []Slide) string {
+func contentTypes(slides []slidedoc.Slide) string {
 	const pml = "application/vnd.openxmlformats-officedocument.presentationml."
 	var b strings.Builder
 	b.WriteString(xmlH + `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">`)
@@ -211,7 +208,7 @@ func contentTypes(slides []Slide) string {
 	return b.String()
 }
 
-func coreXML(d Deck, created time.Time) string {
+func coreXML(d slidedoc.Deck, created time.Time) string {
 	ts := created.UTC().Format("2006-01-02T15:04:05Z")
 	return xmlH + `<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">` +
 		`<dc:title>` + esc(clean(d.Title)) + `</dc:title>` +
@@ -238,15 +235,15 @@ func presentationXML(n int, cx, cy int64) string {
 
 func presentationRels(n int) string {
 	rs := []rel{
-		{"rId1", relNS + "/slideMaster", "slideMasters/slideMaster1.xml"},
-		{"rId2", relNS + "/notesMaster", "notesMasters/notesMaster1.xml"},
-		{"rId3", relNS + "/theme", "theme/theme1.xml"},
-		{"rId4", relNS + "/presProps", "presProps.xml"},
-		{"rId5", relNS + "/viewProps", "viewProps.xml"},
-		{"rId6", relNS + "/tableStyles", "tableStyles.xml"},
+		{"rId1", relNS + "/slideMaster", "slideMasters/slideMaster1.xml", false},
+		{"rId2", relNS + "/notesMaster", "notesMasters/notesMaster1.xml", false},
+		{"rId3", relNS + "/theme", "theme/theme1.xml", false},
+		{"rId4", relNS + "/presProps", "presProps.xml", false},
+		{"rId5", relNS + "/viewProps", "viewProps.xml", false},
+		{"rId6", relNS + "/tableStyles", "tableStyles.xml", false},
 	}
 	for i := 0; i < n; i++ {
-		rs = append(rs, rel{fmt.Sprintf("rId%d", 10+i), relNS + "/slide", fmt.Sprintf("slides/slide%d.xml", i+1)})
+		rs = append(rs, rel{fmt.Sprintf("rId%d", 10+i), relNS + "/slide", fmt.Sprintf("slides/slide%d.xml", i+1), false})
 	}
 	return rels(rs...)
 }
@@ -259,14 +256,6 @@ const masterXML = xmlH + `<p:sldMaster ` + pNS + `><p:cSld><p:bg><p:bgRef idx="1
 	`<p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst><p:txStyles><p:titleStyle/><p:bodyStyle/><p:otherStyle/></p:txStyles></p:sldMaster>`
 
 const layoutXML = xmlH + `<p:sldLayout ` + pNS + ` type="blank" preserve="1"><p:cSld name="Blank"><p:spTree>` + grpSp + `</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`
-
-func slideXML(k int, title string, cx, cy int64) string {
-	return fmt.Sprintf(xmlH+`<p:sld `+pNS+`><p:cSld><p:spTree>`+grpSp+
-		`<p:pic><p:nvPicPr><p:cNvPr id="2" name="Slide %d" descr="%s"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>`+
-		`<p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>`+
-		`<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="%d" cy="%d"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`+
-		`</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`, k, esc(clean(title)), cx, cy)
-}
 
 // notesImage is where the slide picture goes on a notes page: the top half
 // of a portrait page, keeping the slide's shape.
