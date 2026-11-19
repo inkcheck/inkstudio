@@ -21,8 +21,9 @@ import (
 
 // Host is what the studio needs from the desktop shell.
 type Host struct {
-	// ChooseDir asks for a folder; "" means the user cancelled.
-	ChooseDir func(title string, create bool) (string, error)
+	// ChooseDir asks for a folder, starting in start when it is set; ""
+	// means the user cancelled.
+	ChooseDir func(title, start string, create bool) (string, error)
 	// ChooseSave asks where to save a file, suggesting path, of the kind
 	// filter names (such as "PDF") with the extension ext (such as "pdf");
 	// "" means the user cancelled.
@@ -132,7 +133,7 @@ func (s *Studio) OpenDir(dir string) (*ProjectInfo, error) {
 // PromptOpen asks for a pack and opens it. It returns nil when the user
 // cancels.
 func (s *Studio) PromptOpen() (*ProjectInfo, error) {
-	dir, err := s.host.ChooseDir("Open a presentation folder", false)
+	dir, err := s.host.ChooseDir("Open a presentation folder", "", false)
 	if err != nil || dir == "" {
 		return nil, err
 	}
@@ -142,7 +143,7 @@ func (s *Studio) PromptOpen() (*ProjectInfo, error) {
 // PromptNew asks for an empty folder, writes inkpress's sample pack into it
 // and opens it. It returns nil when the user cancels.
 func (s *Studio) PromptNew() (*ProjectInfo, error) {
-	dir, err := s.host.ChooseDir("Choose an empty folder for the new presentation", true)
+	dir, err := s.host.ChooseDir("Choose an empty folder for the new presentation", "", true)
 	if err != nil || dir == "" {
 		return nil, err
 	}
@@ -324,6 +325,20 @@ func (s *Studio) api(w http.ResponseWriter, r *http.Request, route string) {
 			err = p.DuplicateTheme(req.Template, req.Theme, req.Name)
 			result = map[string]string{"name": req.Name}
 		}
+	case route == "deck/share" && r.Method == http.MethodPost:
+		result, err = s.shareDeck()
+	case route == "deck/open" && r.Method == http.MethodPost:
+		if s.host.ChooseFile == nil {
+			err = errors.New("opening files is not available here")
+			break
+		}
+		var file string
+		file, err = s.host.ChooseFile("Open a shared presentation", "InkStudio presentation", []string{"inkdeck", "zip"})
+		if err == nil && file != "" {
+			var info *ProjectInfo
+			info, err = s.OpenDeckFile(file)
+			result = info
+		}
 	case route == "theme/import" && r.Method == http.MethodPost:
 		result, err = s.importTheme()
 	case route == "theme/export" && r.Method == http.MethodPost:
@@ -420,14 +435,65 @@ func (s *Studio) OpenPath(path string) error {
 		return err
 	}
 	ext := strings.ToLower(filepath.Ext(path))
+	if ext == InkdeckExt {
+		_, err := s.OpenDeckFile(path)
+		return err
+	}
 	if ext != InkthemeExt && ext != ".zip" {
-		return fmt.Errorf("InkStudio opens presentation folders and %s files, not %s", InkthemeExt, filepath.Base(path))
+		return fmt.Errorf("InkStudio opens presentation folders, %s and %s files, not %s", InkdeckExt, InkthemeExt, filepath.Base(path))
 	}
 	name, err := s.ImportThemeFile(path)
 	if err == nil && name != "" {
 		s.emit(EventThemeImported, map[string]string{"name": name})
 	}
 	return err
+}
+
+// OpenDeckFile asks where to unpack a shared .inkdeck, next to it by
+// default, unpacks a copy there and opens it. It returns nil when the user
+// cancels.
+func (s *Studio) OpenDeckFile(file string) (*ProjectInfo, error) {
+	if s.host.ChooseDir == nil {
+		return nil, errors.New("choosing folders is not available here")
+	}
+	dir, err := s.host.ChooseDir(
+		fmt.Sprintf("Choose where to put “%s”. InkStudio makes a folder there to edit; the .inkdeck file stays as it is.", DeckName(file)),
+		filepath.Dir(file), true)
+	if err != nil || dir == "" {
+		return nil, err
+	}
+	folder, err := UnpackDeck(file, dir)
+	if err != nil {
+		return nil, err
+	}
+	return s.OpenDir(folder)
+}
+
+func (s *Studio) shareDeck() (map[string]any, error) {
+	p := s.current()
+	if p == nil {
+		return nil, errNoProject
+	}
+	if s.host.ChooseSave == nil {
+		return nil, errors.New("saving files is not available here")
+	}
+	home, _ := os.UserHomeDir()
+	name := filepath.Base(p.Dir)
+	if info, err := p.Info(); err == nil && info.Title != "" {
+		name = DeckName(info.Title + InkdeckExt)
+	}
+	out, err := s.host.ChooseSave("Share the presentation as one file", filepath.Join(home, "Desktop", name+InkdeckExt), "InkStudio presentation", "inkdeck")
+	if err != nil || out == "" {
+		return map[string]any{"path": ""}, err
+	}
+	if !strings.HasSuffix(out, InkdeckExt) {
+		out += InkdeckExt
+	}
+	n, err := p.ShareDeck(out)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"path": out, "files": n}, nil
 }
 
 func (s *Studio) exportTheme(name string) (map[string]string, error) {

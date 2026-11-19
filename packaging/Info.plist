@@ -32,9 +32,31 @@
   <key>NSHumanReadableCopyright</key>
   <string>Apache License 2.0</string>
 
-  <!-- .inktheme: a zip of one inkpress template pack. -->
+  <!-- .inkdeck: a zip of a whole presentation. .inktheme: a zip of one
+       inkpress template pack. -->
   <key>UTExportedTypeDeclarations</key>
   <array>
+    <dict>
+      <key>UTTypeIdentifier</key>
+      <string>io.github.inkcheck.inkdeck</string>
+      <key>UTTypeDescription</key>
+      <string>InkStudio presentation</string>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>public.zip-archive</string>
+        <string>public.data</string>
+        <string>public.presentation</string>
+      </array>
+      <key>UTTypeIconFile</key>
+      <string>inkstudio</string>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array>
+          <string>inkdeck</string>
+        </array>
+      </dict>
+    </dict>
     <dict>
       <key>UTTypeIdentifier</key>
       <string>io.github.inkcheck.inktheme</string>
@@ -59,6 +81,20 @@
 
   <key>CFBundleDocumentTypes</key>
   <array>
+    <!-- .inkdeck: a whole presentation, shared as one file; opening one
+         unpacks a copy to edit. -->
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>InkStudio presentation</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>LSHandlerRank</key>
+      <string>Owner</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>io.github.inkcheck.inkdeck</string>
+      </array>
+    </dict>
     <dict>
       <key>CFBundleTypeName</key>
       <string>InkStudio theme</string>

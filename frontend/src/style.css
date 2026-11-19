@@ -374,6 +374,7 @@ code { font-family: var(--mono); font-size: 0.95em; }
 .menu [role="menuitem"]:hover, .menu [role="menuitem"]:focus-visible { background: var(--accent); color: #fff; outline: none; }
 .menu kbd { font: inherit; color: var(--text-muted); }
 .menu [role="menuitem"]:hover kbd, .menu [role="menuitem"]:focus-visible kbd { color: rgb(255 255 255 / 0.8); }
+.menu-sep { border: 0; border-top: 1px solid var(--border); margin: 6px 4px; }
 .menu-note { margin: 4px 10px 4px; padding-top: 6px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-muted); }
 
 /* ---- theme editor ---- */

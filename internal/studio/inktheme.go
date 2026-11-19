@@ -24,11 +24,14 @@ import (
 // InkthemeExt is the extension of theme files.
 const InkthemeExt = ".inktheme"
 
-// Limits on what an import unpacks.
-const (
-	maxThemeFiles = 2000
-	maxThemeBytes = 200 << 20
-)
+// limits caps what an unpack writes.
+type limits struct {
+	what  string // "theme" or "deck", for messages
+	files int
+	bytes int64
+}
+
+var themeLimits = limits{"theme", 2000, 200 << 20}
 
 var templateNameRe = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$`)
 
@@ -86,7 +89,7 @@ func (p *Project) ImportTheme(file, name string, replace bool) error {
 	if err := os.Mkdir(staging, 0o755); err != nil {
 		return err
 	}
-	if err := unpack(zr.File, root, staging); err != nil {
+	if err := unpack(zr.File, root, staging, themeLimits); err != nil {
 		return err
 	}
 	if _, err := templates.Load(work, "theme"); err != nil {
@@ -137,8 +140,8 @@ func themeRoot(files []*zip.File) (string, error) {
 }
 
 // unpack writes the files under root in the zip to dir. It refuses paths
-// that leave dir, links and devices, and stops at the size limits.
-func unpack(files []*zip.File, root, dir string) error {
+// that leave dir, links and devices, and stops at the limits.
+func unpack(files []*zip.File, root, dir string, lim limits) error {
 	count := 0
 	var total int64
 	for _, f := range files {
@@ -152,7 +155,7 @@ func unpack(files []*zip.File, root, dir string) error {
 		}
 		clean := path.Clean(rel)
 		if path.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, "../") || strings.Contains(rel, `\`) {
-			return fmt.Errorf("the theme has a file outside its folder: %s", f.Name)
+			return fmt.Errorf("the %s has a file outside its folder: %s", lim.what, f.Name)
 		}
 		target := filepath.Join(dir, filepath.FromSlash(clean))
 		mode := f.Mode()
@@ -163,17 +166,17 @@ func unpack(files []*zip.File, root, dir string) error {
 			continue
 		}
 		if !mode.IsRegular() {
-			return fmt.Errorf("the theme has a link or special file: %s", f.Name)
+			return fmt.Errorf("the %s has a link or special file: %s", lim.what, f.Name)
 		}
 		count++
 		total += int64(f.UncompressedSize64)
-		if count > maxThemeFiles || total > maxThemeBytes {
-			return fmt.Errorf("the theme is too big: more than %d files or %d MB", maxThemeFiles, maxThemeBytes>>20)
+		if count > lim.files || total > lim.bytes {
+			return fmt.Errorf("the %s is too big: more than %d files or %d MB", lim.what, lim.files, lim.bytes>>20)
 		}
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
 		}
-		if err := extract(f, target, maxThemeBytes-total+int64(f.UncompressedSize64)); err != nil {
+		if err := extract(f, target, lim.bytes-total+int64(f.UncompressedSize64)); err != nil {
 			return err
 		}
 	}
@@ -196,7 +199,7 @@ func extract(f *zip.File, target string, limit int64) error {
 		err = cerr
 	}
 	if err == nil && n > limit {
-		err = errors.New("the theme is too big")
+		err = errors.New("the archive holds more than its headers say")
 	}
 	return err
 }

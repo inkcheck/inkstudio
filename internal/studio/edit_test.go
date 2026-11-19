@@ -326,3 +326,93 @@ func TestDuplicateTheme(t *testing.T) {
 		t.Error("accepted a path as a name")
 	}
 }
+
+func TestShareAndUnpackDeck(t *testing.T) {
+	p, err := Open(samplePack(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Things that stay out of a shared deck.
+	for name, body := range map[string]string{
+		"talk.pdf": "pdf", "talk.pptx": "x", ".git/HEAD": "ref", "slides/.inkpress-x.d2": "x", ".DS_Store": "x",
+	} {
+		os.MkdirAll(filepath.Join(p.Dir, filepath.Dir(name)), 0o755)
+		os.WriteFile(filepath.Join(p.Dir, name), []byte(body), 0o644)
+	}
+	out := filepath.Join(t.TempDir(), "My Talk.inkdeck")
+	n, err := p.ShareDeck(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zr, err := zip.OpenReader(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := map[string]bool{}
+	for _, f := range zr.File {
+		names[f.Name] = true
+	}
+	zr.Close()
+	if len(names) != n {
+		t.Errorf("%d entries, %d reported", len(names), n)
+	}
+	for _, want := range []string{"talk/settings.toml", "talk/slides/01-title.md", "talk/.templates/default/template.toml", "talk/.templates/default/fonts/IBMPlexSans-Regular.ttf", "talk/assets/cover.svg"} {
+		if !names[want] {
+			t.Errorf("missing %s", want)
+		}
+	}
+	for name := range names {
+		for _, bad := range []string{".pdf", ".pptx", ".git/", ".inkpress-", ".DS_Store"} {
+			if strings.Contains(name, bad) {
+				t.Errorf("packed %s", name)
+			}
+		}
+	}
+
+	dest := t.TempDir()
+	folder, err := UnpackDeck(out, dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Base(folder) != "My Talk" {
+		t.Errorf("folder = %s", folder)
+	}
+	q, err := Open(folder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pv, err := q.Render(nil); err != nil || len(pv.Slides) != 13 {
+		t.Fatalf("render the unpacked deck: %v", err)
+	}
+	// A second copy gets its own folder.
+	again, err := UnpackDeck(out, dest)
+	if err != nil || filepath.Base(again) != "My Talk 2" {
+		t.Errorf("second unpack = %s, %v", again, err)
+	}
+}
+
+func TestUnpackDeckRefusesBadZips(t *testing.T) {
+	dir := t.TempDir()
+	dest := t.TempDir()
+	for name, files := range map[string]map[string]string{
+		"noslides": {"talk/settings.toml": ""},
+		"escape":   {"talk/slides/01.md": "# x", "talk/../../evil.md": "x"},
+		"two":      {"a/slides/01.md": "", "b/slides/01.md": ""},
+	} {
+		zipPath := filepath.Join(dir, name+".inkdeck")
+		writeZip(t, zipPath, files)
+		if _, err := UnpackDeck(zipPath, dest); err == nil {
+			t.Errorf("%s: unpacked", name)
+		}
+	}
+	entries, _ := os.ReadDir(dest)
+	if len(entries) != 0 {
+		t.Errorf("left behind: %v", entries)
+	}
+	// A zip of the pack's contents, without the folder, works too.
+	flat := filepath.Join(dir, "flat.inkdeck")
+	writeZip(t, flat, map[string]string{"slides/01.md": "# Hi"})
+	if folder, err := UnpackDeck(flat, dest); err != nil || filepath.Base(folder) != "flat" {
+		t.Errorf("flat: %s, %v", folder, err)
+	}
+}

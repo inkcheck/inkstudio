@@ -165,6 +165,20 @@ number shows for a moment after each move, and the pointer hides. Esc ends
 the show on the slide you reached. Edits made while presenting, in another
 editor, show up live.
 
+## Sharing a presentation
+
+**Export ▾ ▸ Share as .inkdeck…** (also in the File menu) saves the whole
+presentation as one file to send: an `.inkdeck` is a zip of the pack, with
+`settings.toml`, `slides/`, `assets/` and `.templates/` (fonts included), in
+one folder named after the deck. It leaves out hidden files such as `.git`,
+and the PDFs, PowerPoint files and HTML that builds leave in the pack.
+
+Double-clicking an `.inkdeck`, or **File ▸ Open Shared Presentation…**, asks
+where to put it, next to the file by default, unpacks a copy there as a
+normal folder, and opens that. The `.inkdeck` itself is never changed. The
+unpacking refuses paths that leave the folder, links, more than 5000 files
+or 1 GB, and files without a `slides/` folder. `unzip` opens one too.
+
 ## How it works
 
 ```

@@ -35,6 +35,9 @@
               <button role="menuitem" data-export="pptx"><span>PowerPoint (.pptx)…</span><kbd>⇧⌘E</kbd></button>
               <button role="menuitem" data-export="odp"><span>OpenDocument (.odp)…</span></button>
               <p class="menu-note">PowerPoint and OpenDocument slides are pictures, with your notes as speaker notes.</p>
+              <hr class="menu-sep" />
+              <button role="menuitem" data-action="share"><span>Share as .inkdeck…</span></button>
+              <p class="menu-note">One file with the slides, images and templates, to send to someone with InkStudio.</p>
             </div>
           </div>
           <button class="btn" data-action="toggle-inspector" aria-pressed="true" title="Toggle inspector (⌥⌘I)">Inspector</button>
@@ -93,6 +96,7 @@
           <div class="welcome-actions">
             <button class="btn primary" data-action="open">Open folder…</button>
             <button class="btn" data-action="new">New presentation</button>
+            <button class="btn" data-action="open-deck">Open .inkdeck…</button>
           </div>
           <p class="error" id="welcome-error" hidden></p>
         </div>

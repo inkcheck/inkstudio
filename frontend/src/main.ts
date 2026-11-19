@@ -173,12 +173,13 @@ async function refreshProject() {
   }
 }
 
-async function prompt(kind: "open" | "new") {
+async function prompt(kind: "open" | "new" | "deck") {
   els.welcomeError.hidden = true;
+  closeExportMenu();
   await saveAll();
   try {
     // The backend emits project:opened, which does the rest.
-    await (kind === "open" ? api.open() : api.create());
+    await (kind === "open" ? api.open() : kind === "new" ? api.create() : api.openDeck());
   } catch (e) {
     const msg = errorText(e);
     if (project) showStatus(msg);
@@ -837,6 +838,22 @@ async function exportAs(format: ExportFormat) {
   }
 }
 
+async function shareDeck() {
+  closeExportMenu();
+  if (!project) return;
+  try {
+    await saveAll();
+    const res = await api.shareDeck();
+    if (!res.path) return;
+    showStatus(`Shared ${res.files} files as ${shortDir(res.path)}`, {
+      label: "Show in Finder",
+      run: () => void api.reveal(res.path).catch((e) => showStatus(errorText(e))),
+    });
+  } catch (e) {
+    showStatus(`Share failed: ${errorText(e)}`, undefined, 12000);
+  }
+}
+
 function openExportMenu() {
   if (!project || exporting) return;
   els.exportMenu.hidden = false;
@@ -851,7 +868,7 @@ function closeExportMenu() {
 }
 
 els.exportMenu.addEventListener("keydown", (e) => {
-  const items = [...els.exportMenu.querySelectorAll<HTMLButtonElement>("[data-export]")];
+  const items = [...els.exportMenu.querySelectorAll<HTMLButtonElement>("[role=menuitem]")];
   const i = items.indexOf(document.activeElement as HTMLButtonElement);
   if (e.key === "ArrowDown") items[(i + 1) % items.length].focus();
   else if (e.key === "ArrowUp") items[(i - 1 + items.length) % items.length].focus();
@@ -934,6 +951,8 @@ document.addEventListener("click", (e) => {
     case "toggle-preview": return togglePreview();
     case "toggle-notes": return toggleNotes();
     case "present": return void startShow();
+    case "share": return void shareDeck();
+    case "open-deck": return void prompt("deck");
     case "toggle-inspector": return toggleInspector();
     case "export-menu": return els.exportMenu.hidden ? openExportMenu() : closeExportMenu();
     case "prev": return step(-1);
@@ -977,6 +996,8 @@ Events.On("export:progress", (ev) => {
 });
 Events.On("menu:view", (ev) => project && setView(ev.data === "presenter" ? "presenter" : "editor"));
 Events.On("menu:toggle-preview", () => togglePreview());
+Events.On("menu:share", () => void shareDeck());
+Events.On("menu:open-deck", () => void prompt("deck"));
 Events.On("menu:present", (ev) => void startShow(ev.data === "start" ? "start" : "current"));
 // Leaving full screen another way, such as the green button, ends the show.
 document.addEventListener("fullscreenchange", () => {

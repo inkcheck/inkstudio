@@ -114,5 +114,7 @@ export const api = {
   exportTheme: (name: string) =>
     call<{ path: string }>("POST", "theme/export", JSON.stringify({ name })).then((r) => r.path),
   fullscreen: (on: boolean) => call<{ ok: boolean }>("POST", "fullscreen", JSON.stringify({ on })),
+  shareDeck: () => call<{ path: string; files?: number }>("POST", "deck/share"),
+  openDeck: () => call<ProjectInfo | null>("POST", "deck/open"),
   reveal: (path: string) => call<{ ok: boolean }>("POST", "reveal", JSON.stringify({ path })),
 };

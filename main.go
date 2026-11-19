@@ -35,12 +35,17 @@ func main() {
 	var window *application.WebviewWindow
 
 	st := studio.New(studio.Host{
-		ChooseDir: func(title string, create bool) (string, error) {
+		ChooseDir: func(title, start string, create bool) (string, error) {
 			d := app.Dialog.OpenFile().
 				SetTitle(title).
+				// macOS shows the message, not the title, in open panels.
+				SetMessage(title).
 				CanChooseDirectories(true).
 				CanChooseFiles(false).
 				CanCreateDirectories(create)
+			if start != "" {
+				d.SetDirectory(start)
+			}
 			if window != nil {
 				d.AttachToWindow(window)
 			}
@@ -179,6 +184,9 @@ func appMenu(app *application.App, st *studio.Studio) *application.Menu {
 		_, err := st.PromptOpen()
 		report(err)
 	})
+	file.Add("Open Shared Presentation…").OnClick(func(*application.Context) {
+		app.Event.Emit("menu:open-deck")
+	})
 	file.AddSeparator()
 	// The frontend owns the buffers, so it does the saving, and saves
 	// before it exports.
@@ -194,6 +202,10 @@ func appMenu(app *application.App, st *studio.Studio) *application.Menu {
 	})
 	file.Add("Export OpenDocument…").OnClick(func(*application.Context) {
 		app.Event.Emit("menu:export", "odp")
+	})
+	file.AddSeparator()
+	file.Add("Share as .inkdeck…").OnClick(func(*application.Context) {
+		app.Event.Emit("menu:share")
 	})
 	file.AddSeparator()
 	file.Add("Import Theme…").OnClick(func(*application.Context) {
