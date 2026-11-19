@@ -1,7 +1,8 @@
 // webkit-snap <url> <out.png> <width> <height> [delay] [script]: loads url in
 // an offscreen WKWebView, the engine the macOS app runs in, optionally runs
 // script a second after it loads, and saves a snapshot after delay seconds.
-// Use it with `make web` to see the UI as the app draws it.
+// Use it with `make web` to see the UI as the app draws it. SNAP_APPEARANCE
+// (light or dark) picks the mode.
 import AppKit
 import WebKit
 
@@ -36,12 +37,25 @@ class Delegate: NSObject, WKNavigationDelegate {
 }
 
 let app = NSApplication.shared
+// SNAP_APPEARANCE=light or dark draws the page in that mode, whatever the
+// system's.
+if let mode = ProcessInfo.processInfo.environment["SNAP_APPEARANCE"] {
+    app.appearance = NSAppearance(named: mode == "dark" ? .darkAqua : .aqua)
+}
 app.setActivationPolicy(.prohibited)
-let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: w, height: h), styleMask: [.borderless], backing: .buffered, defer: false)
+// On screen but fully transparent and out of the way: a window the system
+// counts as visible runs animation frames, which pages such as CodeMirror's
+// need to lay out; nobody sees it, and it takes no clicks.
+let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: w, height: h), styleMask: [.borderless], backing: .buffered, defer: false)
+window.alphaValue = 0
+window.ignoresMouseEvents = true
+window.level = .init(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
+window.collectionBehavior = [.transient, .ignoresCycle, .stationary]
 let web = WKWebView(frame: NSRect(x: 0, y: 0, width: w, height: h))
 let delegate = Delegate()
 web.navigationDelegate = delegate
 window.contentView = web
+window.orderFrontRegardless()
 web.load(URLRequest(url: url))
 DispatchQueue.main.asyncAfter(deadline: .now() + 20) { print("timeout"); exit(1) }
 app.run()

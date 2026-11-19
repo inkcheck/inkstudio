@@ -23,8 +23,8 @@ build: frontend ## Build bin/inkstudio
 run: build ## Build and run; PACK=path/to/pack opens a pack
 	bin/inkstudio $(PACK)
 
-web: frontend ## Serve the UI to a browser on :1416; PACK=path/to/pack
-	go run ./cmd/inkstudio-web $(PACK)
+web: frontend ## Serve the UI to a browser on :1416; PACK=path/to/pack, or the sample deck
+	go run ./cmd/inkstudio-web $(or $(PACK),-sample)
 
 bin/webkit-snap: tools/webkit-snap/snap.swift
 	@mkdir -p bin
