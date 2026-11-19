@@ -66,6 +66,8 @@ const SETTINGS = "settings.toml";
 const preview = new Preview($("preview-frame"));
 const presentPreview = new Preview($("present-frame"));
 const strip = new Preview($("strip-frame"), "strip");
+const showPreview = new Preview($("show-frame"));
+let presenting = false;
 
 const editor = new Editor($("editor"), {
   onChange(path, text) {
@@ -215,6 +217,7 @@ function applyView() {
     btn.hidden = !open || btn.dataset.for !== view;
   }
   document.querySelector<HTMLButtonElement>('[data-action="toggle-inspector"]')!.disabled = !open;
+  document.querySelector<HTMLButtonElement>('[data-action="present"]')!.disabled = !open;
   loadPreviews();
   if (view === "presenter") {
     // Take the keyboard from the hidden editor.
@@ -226,7 +229,9 @@ function applyView() {
 /** Loads the newest render into the frames that can be seen. */
 function loadPreviews() {
   if (!lastRender) return;
-  const frames = view === "editor" ? (els.previewPane.hidden ? [] : [preview]) : [presentPreview, strip];
+  const frames = presenting
+    ? [showPreview]
+    : view === "editor" ? (els.previewPane.hidden ? [] : [preview]) : [presentPreview, strip];
   for (const p of frames) {
     if (p.loaded === lastRender.url) p.refit();
     else p.load(lastRender.url);
@@ -475,7 +480,7 @@ function syncSlideToFile() {
 function showSlide(n: number) {
   const total = lastRender?.slides.length ?? 0;
   slideNumber = Math.min(Math.max(1, n), Math.max(total, 1));
-  for (const p of [preview, presentPreview, strip]) p.show(slideNumber);
+  for (const p of [preview, presentPreview, strip, showPreview]) p.show(slideNumber);
   els.slidePos.textContent = total ? `${slideNumber} / ${total}` : "–";
 }
 
@@ -598,6 +603,93 @@ function toggleNotes(force?: boolean) {
   presentPreview.refit();
 }
 
+// ---- slideshow -----------------------------------------------------------
+
+const show = $("show");
+const showHud = $("show-hud");
+let hudTimer = 0;
+
+/** Presents full screen, from the current slide or the first. */
+async function startShow(from: "current" | "start" = "current") {
+  if (!project || presenting || !lastRender?.slides.length) return;
+  presenting = true;
+  closeExportMenu();
+  (document.activeElement as HTMLElement | null)?.blur();
+  show.hidden = false;
+  show.focus();
+  if (from === "start") slideNumber = 1;
+  loadPreviews();
+  showSlide(slideNumber);
+  flashHud();
+  try {
+    await api.fullscreen(true);
+  } catch {
+    // The browser build: use the page's own full screen.
+    void document.documentElement.requestFullscreen?.().catch(() => {});
+  }
+  // The window resizes as it goes full screen.
+  setTimeout(() => showPreview.refit(), 700);
+}
+
+function endShow() {
+  if (!presenting) return;
+  presenting = false;
+  show.hidden = true;
+  showPreview.clear();
+  void api.fullscreen(false).catch(() => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+  });
+  // Land on the slide the show ended on.
+  const s = lastRender?.slides[slideNumber - 1];
+  if (s) {
+    active = s.source;
+    markActiveInSidebar();
+    if (view === "editor") void openFile(s.source);
+    else showPresenterSlide();
+  }
+  loadPreviews();
+}
+
+/** Shows the slide number for a moment. */
+function flashHud() {
+  const total = lastRender?.slides.length ?? 0;
+  showHud.textContent = `${slideNumber} / ${total}`;
+  showHud.classList.add("visible");
+  show.classList.remove("idle");
+  clearTimeout(hudTimer);
+  hudTimer = window.setTimeout(() => {
+    showHud.classList.remove("visible");
+    show.classList.add("idle"); // hides the pointer
+  }, 1600);
+}
+
+function showStep(delta: number) {
+  const total = lastRender?.slides.length ?? 0;
+  const n = Math.min(Math.max(1, slideNumber + delta), total);
+  if (n !== slideNumber) showSlide(n);
+  flashHud();
+}
+
+function showKey(e: KeyboardEvent) {
+  const total = lastRender?.slides.length ?? 1;
+  switch (e.key) {
+    case "Escape": endShow(); break;
+    case "ArrowRight": case "ArrowDown": case "PageDown": case " ": case "Enter": case "n": showStep(1); break;
+    case "ArrowLeft": case "ArrowUp": case "PageUp": case "Backspace": case "p": showStep(-1); break;
+    case "Home": showSlide(1); flashHud(); break;
+    case "End": showSlide(total); flashHud(); break;
+    default: return;
+  }
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+show.addEventListener("click", (e) => {
+  // The left third goes back, the rest forward, as in Keynote.
+  showStep(e.clientX < window.innerWidth / 3 ? -1 : 1);
+});
+show.addEventListener("pointermove", () => flashHud());
+
 function presenterKey(key: string) {
   switch (key) {
     case "ArrowRight": case "ArrowDown": case "PageDown": case " ": return step(1), true;
@@ -682,7 +774,7 @@ function toggleInspector(force?: boolean) {
   els.inspector.hidden = !project || !inspectorOpen;
   document.querySelector('[data-action="toggle-inspector"]')?.setAttribute("aria-pressed", String(inspectorOpen));
   inspector.refresh();
-  for (const p of [preview, presentPreview, strip]) p.refit();
+  for (const p of [preview, presentPreview, strip, showPreview]) p.refit();
 }
 
 async function importTheme() {
@@ -841,6 +933,7 @@ document.addEventListener("click", (e) => {
     case "new": return void prompt("new");
     case "toggle-preview": return togglePreview();
     case "toggle-notes": return toggleNotes();
+    case "present": return void startShow();
     case "toggle-inspector": return toggleInspector();
     case "export-menu": return els.exportMenu.hidden ? openExportMenu() : closeExportMenu();
     case "prev": return step(-1);
@@ -849,6 +942,11 @@ document.addEventListener("click", (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
+  if (presenting) return showKey(e);
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+    e.preventDefault();
+    return void startShow(e.shiftKey ? "start" : "current");
+  }
   // ⌥/⌘ PageUp and PageDown move between slides from anywhere.
   if ((e.altKey || e.metaKey) && (e.key === "PageDown" || e.key === "PageUp")) {
     e.preventDefault();
@@ -879,6 +977,11 @@ Events.On("export:progress", (ev) => {
 });
 Events.On("menu:view", (ev) => project && setView(ev.data === "presenter" ? "presenter" : "editor"));
 Events.On("menu:toggle-preview", () => togglePreview());
+Events.On("menu:present", (ev) => void startShow(ev.data === "start" ? "start" : "current"));
+// Leaving full screen another way, such as the green button, ends the show.
+document.addEventListener("fullscreenchange", () => {
+  if (!document.fullscreenElement && presenting) endShow();
+});
 Events.On("menu:toggle-notes", () => view === "presenter" && toggleNotes());
 Events.On("menu:toggle-inspector", () => project && toggleInspector());
 Events.On("menu:import-theme", () => void importTheme());

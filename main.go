@@ -86,6 +86,16 @@ func main() {
 			d.Show()
 			return <-answer
 		},
+		SetFullscreen: func(on bool) {
+			if window == nil {
+				return
+			}
+			if on {
+				window.Fullscreen()
+			} else {
+				window.UnFullscreen()
+			}
+		},
 		Emit: func(name string, data any) {
 			app.Event.Emit(name, data)
 		},
@@ -196,6 +206,13 @@ func appMenu(app *application.App, st *studio.Studio) *application.Menu {
 	})
 	view.Add("Presenter").SetAccelerator("CmdOrCtrl+2").OnClick(func(*application.Context) {
 		app.Event.Emit("menu:view", "presenter")
+	})
+	view.AddSeparator()
+	view.Add("Present").SetAccelerator("CmdOrCtrl+Return").OnClick(func(*application.Context) {
+		app.Event.Emit("menu:present", "current")
+	})
+	view.Add("Present from Start").SetAccelerator("CmdOrCtrl+Shift+Return").OnClick(func(*application.Context) {
+		app.Event.Emit("menu:present", "start")
 	})
 	view.AddSeparator()
 	view.Add("Toggle Preview").SetAccelerator("CmdOrCtrl+P").OnClick(func(*application.Context) {

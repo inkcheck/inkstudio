@@ -113,5 +113,6 @@ export const api = {
   importTheme: () => call<{ name: string }>("POST", "theme/import").then((r) => r.name),
   exportTheme: (name: string) =>
     call<{ path: string }>("POST", "theme/export", JSON.stringify({ name })).then((r) => r.path),
+  fullscreen: (on: boolean) => call<{ ok: boolean }>("POST", "fullscreen", JSON.stringify({ on })),
   reveal: (path: string) => call<{ ok: boolean }>("POST", "reveal", JSON.stringify({ path })),
 };

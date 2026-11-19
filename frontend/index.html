@@ -18,6 +18,10 @@
           <span id="deck-dir" class="muted"></span>
         </div>
         <div class="toolbar-group">
+          <button class="btn present-btn" data-action="present" title="Present from this slide (⌘↩)">
+            <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M4 2.5v11a.5.5 0 0 0 .76.43l9-5.5a.5.5 0 0 0 0-.86l-9-5.5A.5.5 0 0 0 4 2.5z" fill="currentColor"/></svg>
+            <span>Present</span>
+          </button>
           <div class="segmented" role="tablist" aria-label="View">
             <button role="tab" aria-selected="true" data-view="editor">Editor</button>
             <button role="tab" aria-selected="false" data-view="presenter" title="Presenter view (⌘2)">Presenter</button>
@@ -96,6 +100,11 @@
 
       <aside class="inspector" id="inspector" aria-label="Inspector" hidden></aside>
       </div>
+
+      <section class="show" id="show" aria-label="Slideshow" tabindex="-1" hidden>
+        <div class="preview-frame" id="show-frame"></div>
+        <div class="show-hud" id="show-hud" aria-live="polite"></div>
+      </section>
 
       <footer class="statusbar">
         <span id="status"></span>

@@ -155,6 +155,16 @@ you confirm.
   - If the slide you are on uses another theme, it says so, and offers to
     use the edited theme for the presentation.
 
+## Presenting
+
+**▶ Present** in the toolbar (⌘↩) shows the deck full screen from the
+current slide; ⇧⌘↩ starts from the first. →, ↓, Space, Return and Page Down
+go forward; ←, ↑ and Page Up go back; Home and End jump to the ends. A click
+on the left third of the screen goes back, anywhere else forward. The slide
+number shows for a moment after each move, and the pointer hides. Esc ends
+the show on the slide you reached. Edits made while presenting, in another
+editor, show up live.
+
 ## How it works
 
 ```

@@ -405,6 +405,28 @@ code { font-family: var(--mono); font-size: 0.95em; }
   font-weight: 600; font-size: 11px; box-shadow: inset 0 0 0 1px rgb(127 127 127 / 0.3);
 }
 
+/* ---- present ---- */
+.present-btn { display: inline-flex; align-items: center; gap: 6px; }
+.present-btn svg { flex: none; }
+.present-btn:not(:disabled) { background: var(--accent); border-color: var(--accent); color: #fff; }
+.present-btn:not(:disabled):hover { filter: brightness(1.08); }
+.show {
+  position: fixed; inset: 0; z-index: 100;
+  background: #000;
+  cursor: default;
+}
+.show.idle { cursor: none; }
+.show:focus { outline: none; }
+.show .preview-frame iframe { filter: none; pointer-events: none; }
+.show-hud {
+  position: absolute; right: 20px; bottom: 16px;
+  font: 600 13px/1 var(--mono); color: rgb(255 255 255 / 0.85);
+  background: rgb(0 0 0 / 0.55); border-radius: 6px; padding: 6px 10px;
+  opacity: 0; transition: opacity 0.3s;
+  pointer-events: none;
+}
+.show-hud.visible { opacity: 1; }
+
 /* ---- welcome ---- */
 .welcome { display: grid; place-items: center; min-height: 0; }
 .welcome-card { max-width: 440px; text-align: center; padding: 24px; }

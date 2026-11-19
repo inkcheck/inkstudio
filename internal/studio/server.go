@@ -32,6 +32,8 @@ type Host struct {
 	ChooseFile func(title, filter string, exts []string) (string, error)
 	// Confirm asks a yes-or-no question; ok labels the yes button.
 	Confirm func(title, message, ok string) bool
+	// SetFullscreen puts the window in or out of full screen, for presenting.
+	SetFullscreen func(on bool)
 	// Emit sends an event to the frontend.
 	Emit func(name string, data any)
 	// Opened is called after a pack opens.
@@ -207,6 +209,18 @@ func (s *Studio) api(w http.ResponseWriter, r *http.Request, route string) {
 		err    error
 	)
 	switch {
+	case route == "fullscreen" && r.Method == http.MethodPost:
+		var req struct {
+			On bool `json:"on"`
+		}
+		if err = decode(r, &req); err == nil {
+			if s.host.SetFullscreen == nil {
+				err = errors.New("full screen is not available here")
+				break
+			}
+			s.host.SetFullscreen(req.On)
+			result = map[string]bool{"ok": true}
+		}
 	case route == "log" && r.Method == http.MethodPost:
 		// The frontend reports its errors here, so they reach the terminal.
 		b, _ := io.ReadAll(io.LimitReader(r.Body, 16<<10))
