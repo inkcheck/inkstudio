@@ -5,8 +5,8 @@
 #   scripts/release.sh check     verify the prerequisites only
 #   scripts/release.sh publish   verify, then release
 #
-# Tag the release first: git tag -a v0.1.0 -m 'InkStudio v0.1.0' && git push
-# origin v0.1.0. TAP_DIR is a clone of inkcheck/homebrew-tap (default:
+# Tag the release first: git tag -a vX.Y.Z -m 'InkStudio vX.Y.Z' && git push
+# origin vX.Y.Z. TAP_DIR is a clone of inkcheck/homebrew-tap (default:
 # ../homebrew-tap). Signing and notarising use the keychain, as in
 # scripts/package.sh.
 set -eu
@@ -33,7 +33,7 @@ if printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
     fail "tag $tag is not on origin (git push origin $tag)"
   fi
 else
-  fail "HEAD has no vX.Y.Z tag (git tag -a v0.1.0 -m 'InkStudio v0.1.0')"
+  fail "HEAD has no vX.Y.Z tag (git tag -a vX.Y.Z -m 'InkStudio vX.Y.Z')"
 fi
 case "$(git remote get-url origin 2>/dev/null || true)" in
   *github.com[:/]inkcheck/inkstudio*) ok "origin is github.com/inkcheck/inkstudio" ;;

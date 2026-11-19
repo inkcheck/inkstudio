@@ -20,7 +20,8 @@ cmd=${1:-app}
 app=build/InkStudio.app
 profile=${MACOS_NOTARY_PROFILE:-inkcheck-notary}
 version=$(git describe --tags --match 'v[0-9]*' 2>/dev/null | sed 's/^v//' || true)
-version=${version:-0.1.0}
+# Before any tag, a development version.
+version=${version:-0.0.0}
 build=$(git rev-list --count HEAD 2>/dev/null || echo 1)
 # The bundle version must be numbers and dots.
 short=$(printf '%s' "$version" | sed 's/[^0-9.].*//')

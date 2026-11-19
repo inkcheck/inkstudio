@@ -78,7 +78,7 @@ the keychain, with the hardened runtime, have Apple notarise it with the
 `inkcheck-notary` notarytool profile (inkpress's `make notary-setup` makes
 it), and staple the ticket. `MACOS_SIGN_IDENTITY` and `MACOS_NOTARY_PROFILE`
 override them, as for inkpress. The version comes from the latest `vX.Y.Z`
-tag, or 0.1.0.
+tag: 0.2.0 at v0.2.0, and 0.2.0-3-gabc1234 three commits after it.
 
 The app registers `.inkdeck` and `.inktheme` files, so a double-click opens
 a shared presentation or imports a theme, and it opens a folder dropped on
