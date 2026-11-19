@@ -1,6 +1,6 @@
 # InkStudio
 
-InkStudio is a desktop app for [inkpress](../inkpress) slide packs. It opens a
+InkStudio is a desktop app for [inkpress](https://github.com/inkcheck/inkpress) slide packs. It opens a
 folder of Markdown slides, edits them with a live preview, and (in later
 phases) presents and exports them. It is a [Wails](https://wails.io) v3 app:
 Go for the backend, which uses inkpress as a library, and the system webview
@@ -20,8 +20,9 @@ JavaScript errors in the app are always logged to the terminal.
 WebKit: the app runs in it, and it differs from Chrome (CSS `zoom`, for one,
 draws differently, which is why the thumbnails use transforms).
 
-Building needs Go, Node and pnpm. inkpress is found at `../inkpress` through
-a `replace` in go.mod, until it publishes its library packages.
+Building needs Go, Node and pnpm. InkStudio uses inkpress's packages from
+`github.com/inkcheck/inkpress` (v0.3.0 or later). To work on both at once,
+point it at a local clone: `go work init . ../inkpress`.
 
 ## Installing on a Mac
 

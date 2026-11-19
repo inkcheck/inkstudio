@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/chromedp/chromedp v0.22.1
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/inkcheck/inkpress v0.0.0
+	github.com/inkcheck/inkpress v0.3.0
 	github.com/wailsapp/wails/v3 v3.0.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -26,6 +26,3 @@ require (
 	github.com/yuin/goldmark-highlighting/v2 v2.0.0-20230729083705-37449abec8cc // indirect
 	golang.org/x/sys v0.48.0 // indirect
 )
-
-// Until inkpress publishes its library packages.
-replace github.com/inkcheck/inkpress => ../inkpress
