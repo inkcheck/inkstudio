@@ -15,8 +15,10 @@ package webkit
 import "C"
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"image/png"
 	"runtime/cgo"
 	"unsafe"
 )
@@ -62,9 +64,14 @@ func call(ctx context.Context, f func(h C.uintptr_t)) ([]byte, error) {
 	}
 }
 
-// New makes a view width by height CSS pixels.
-func New(width, height float64) *View {
-	return &View{p: C.ink_wk_new(C.double(width), C.double(height))}
+// New makes a view width by height CSS pixels, drawn zoom points per CSS
+// pixel. Zoom only changes PDFs: a zoom of 0.75 prints 96 CSS pixels to the
+// inch, as browsers do, where 1 prints one point per pixel.
+func New(width, height, zoom float64) *View {
+	if zoom <= 0 {
+		zoom = 1
+	}
+	return &View{p: C.ink_wk_new(C.double(width), C.double(height), C.double(zoom))}
 }
 
 // Load loads the HTML file at file, letting it read files under readAccess.
@@ -92,12 +99,32 @@ func (v *View) Snapshot(ctx context.Context, x, y, w, h, scale float64, transpar
 	if transparent {
 		t = 1
 	}
-	return call(ctx, func(hd C.uintptr_t) {
+	shot, err := call(ctx, func(hd C.uintptr_t) {
 		C.ink_wk_snapshot(v.p, C.double(x), C.double(y), C.double(w), C.double(h), C.double(scale), t, hd)
 	})
+	if err != nil {
+		return nil, err
+	}
+	return recompress(shot), nil
 }
 
-// PDF prints the top-left width by height of the page as one PDF page.
+// recompress encodes a PNG again with Go's best compression, which makes
+// AppKit's PNGs several times smaller, and drops the alpha channel of an
+// opaque one.
+func recompress(b []byte) []byte {
+	img, err := png.Decode(bytes.NewReader(b))
+	if err != nil {
+		return b
+	}
+	var out bytes.Buffer
+	if (&png.Encoder{CompressionLevel: png.BestCompression}).Encode(&out, img) != nil || out.Len() >= len(b) {
+		return b
+	}
+	return out.Bytes()
+}
+
+// PDF prints the top-left width by height CSS pixels of the page as one
+// PDF page, zoom points per pixel.
 func (v *View) PDF(ctx context.Context, width, height float64) ([]byte, error) {
 	return call(ctx, func(h C.uintptr_t) { C.ink_wk_pdf(v.p, C.double(width), C.double(height), h) })
 }

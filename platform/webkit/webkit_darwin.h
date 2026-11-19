@@ -3,7 +3,7 @@
 // back through inkWKDone, with the handle the call was given.
 #include <stdint.h>
 
-void *ink_wk_new(double width, double height);
+void *ink_wk_new(double width, double height, double zoom);
 void ink_wk_load(void *view, const char *file, const char *readAccess, uintptr_t handle);
 void ink_wk_eval(void *view, const char *body, uintptr_t handle);
 void ink_wk_snapshot(void *view, double x, double y, double w, double h, double scale, int transparent, uintptr_t handle);

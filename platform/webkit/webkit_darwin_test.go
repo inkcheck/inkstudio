@@ -30,7 +30,7 @@ func TestView(t *testing.T) {
 <div id="box" style="position:absolute;left:10px;top:20px;width:100px;height:50px;background:rgb(255,0,0)"></div>
 <p style="position:absolute;left:10px;top:100px;margin:0">Hello</p></body></html>`), 0o644)
 
-	v := New(400, 300)
+	v := New(400, 300, 1)
 	defer v.Close()
 	if err := v.Load(ctx, page, dir); err != nil {
 		t.Fatal(err)
@@ -68,6 +68,24 @@ func TestView(t *testing.T) {
 	if err != nil || !bytes.HasPrefix(pdf1, []byte("%PDF")) {
 		t.Fatalf("pdf: %v", err)
 	}
+	// At 0.75 points per pixel, a page prints at 96 pixels to the inch:
+	// 400 by 300 pixels is 300 by 225 points.
+	small := New(400, 300, 0.75)
+	defer small.Close()
+	if err := small.Load(ctx, page, dir); err != nil {
+		t.Fatal(err)
+	}
+	pdf2, err := small.PDF(ctx, 400, 300)
+	if err != nil || !bytes.Contains(pdf2, []byte("0 0 300 225")) {
+		t.Errorf("zoomed PDF has no 300 x 225 page: %v", err)
+	}
+	shot, _ = small.Snapshot(ctx, 10, 20, 100, 50, 2, true)
+	if img, err := png.Decode(bytes.NewReader(shot)); err != nil || img.Bounds().Dx() != 200 {
+		t.Errorf("zoomed snapshot: %v", err)
+	} else if r, _, _, _ := img.At(100, 50).RGBA(); r>>8 < 240 {
+		t.Error("zoomed snapshot is not of the box")
+	}
+
 	merged, err := MergePDF([][]byte{pdf1, pdf1, pdf1})
 	if err != nil || !bytes.HasPrefix(merged, []byte("%PDF")) {
 		t.Fatalf("merge: %v", err)

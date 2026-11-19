@@ -19,6 +19,8 @@ static void onMain(dispatch_block_t block) {
 @property(strong) NSWindow *window;
 @property(strong) WKWebView *web;
 @property uintptr_t loading;
+// zoom is view points per CSS pixel.
+@property double zoom;
 @end
 
 @implementation InkWK
@@ -37,20 +39,23 @@ static void onMain(dispatch_block_t block) {
 - (void)webViewWebContentProcessDidTerminate:(WKWebView *)w { [self finish:@"the web content process stopped"]; }
 @end
 
-void *ink_wk_new(double width, double height) {
+void *ink_wk_new(double width, double height, double zoom) {
 	__block InkWK *k;
 	onMain(^{
 		k = [InkWK new];
+		k.zoom = zoom;
 		WKWebViewConfiguration *cfg = [WKWebViewConfiguration new];
 		// The deck refers to the pack's fonts and images by file: URL.
 		[cfg.preferences setValue:@YES forKey:@"allowFileAccessFromFileURLs"];
 		// Far off screen, and never ordered in: it draws, but nobody sees it.
-		k.window = [[NSWindow alloc] initWithContentRect:NSMakeRect(-30000, -30000, width, height)
+		k.window = [[NSWindow alloc] initWithContentRect:NSMakeRect(-30000, -30000, width * zoom, height * zoom)
 		                                       styleMask:NSWindowStyleMaskBorderless
 		                                         backing:NSBackingStoreBuffered
 		                                           defer:NO];
 		k.window.releasedWhenClosed = NO;
-		k.web = [[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, width, height) configuration:cfg];
+		k.web = [[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, width * zoom, height * zoom) configuration:cfg];
+		// The page still lays out width CSS pixels across.
+		k.web.pageZoom = zoom;
 		// No white behind the page, so pictures of parts keep transparency.
 		[k.web setValue:@NO forKey:@"drawsBackground"];
 		k.web.navigationDelegate = k;
@@ -87,7 +92,8 @@ void ink_wk_snapshot(void *view, double x, double y, double w, double h, double 
 	InkWK *k = (__bridge InkWK *)view;
 	dispatch_async(dispatch_get_main_queue(), ^{
 		WKSnapshotConfiguration *c = [WKSnapshotConfiguration new];
-		c.rect = NSMakeRect(x, y, w, h);
+		double z = k.zoom;
+		c.rect = NSMakeRect(x * z, y * z, w * z, h * z);
 		c.afterScreenUpdates = YES;
 		CGFloat backing = k.window.backingScaleFactor ?: 1;
 		c.snapshotWidth = @(w * scale / backing);
@@ -119,7 +125,7 @@ void ink_wk_pdf(void *view, double width, double height, uintptr_t handle) {
 	InkWK *k = (__bridge InkWK *)view;
 	dispatch_async(dispatch_get_main_queue(), ^{
 		WKPDFConfiguration *c = [WKPDFConfiguration new];
-		c.rect = NSMakeRect(0, 0, width, height);
+		c.rect = NSMakeRect(0, 0, width * k.zoom, height * k.zoom);
 		[k.web createPDFWithConfiguration:c completionHandler:^(NSData *pdf, NSError *error) {
 			done(handle, pdf, error ? error.localizedDescription : nil);
 		}];

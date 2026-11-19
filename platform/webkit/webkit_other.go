@@ -18,7 +18,7 @@ var errUnavailable = errors.New("webkit: not available on this platform")
 type View struct{}
 
 // New makes a view.
-func New(width, height float64) *View { return &View{} }
+func New(width, height, zoom float64) *View { return &View{} }
 
 // Load loads an HTML file.
 func (v *View) Load(ctx context.Context, file, readAccess string) error { return errUnavailable }
