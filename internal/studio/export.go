@@ -16,7 +16,7 @@ import (
 	"github.com/inkcheck/inkpress/pdf"
 	"github.com/inkcheck/inkpress/render"
 
-	"github.com/inkcheck/inkstudio/internal/odp"
+	"github.com/inkcheck/inkstudio/platform/odp"
 	"github.com/inkcheck/inkstudio/platform/pptx"
 )
 
