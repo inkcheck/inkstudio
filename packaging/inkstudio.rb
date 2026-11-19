@@ -28,7 +28,7 @@ cask "inkstudio" do
   ]
 
   caveats <<~EOS
-    Exporting PDF, PowerPoint and OpenDocument files uses an installed
+    Exporting PDF and PowerPoint files uses an installed
     Chrome, Chromium, Edge, Brave or Vivaldi.
   EOS
 end

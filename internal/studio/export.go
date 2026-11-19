@@ -16,7 +16,6 @@ import (
 	"github.com/inkcheck/inkpress/pdf"
 	"github.com/inkcheck/inkpress/render"
 
-	"github.com/inkcheck/inkstudio/platform/odp"
 	"github.com/inkcheck/inkstudio/platform/pptx"
 )
 
@@ -32,12 +31,11 @@ type Format struct {
 var (
 	FormatPDF  = Format{"pdf", "PDF"}
 	FormatPPTX = Format{"pptx", "PowerPoint presentation"}
-	FormatODP  = Format{"odp", "OpenDocument presentation"}
 )
 
 // FormatByExt returns the format with extension ext.
 func FormatByExt(ext string) (Format, bool) {
-	for _, f := range []Format{FormatPDF, FormatPPTX, FormatODP} {
+	for _, f := range []Format{FormatPDF, FormatPPTX} {
 		if f.Ext == ext {
 			return f, true
 		}
@@ -120,7 +118,7 @@ func (p *Project) ExportPDF(ctx context.Context, out string) (*Exported, error) 
 }
 
 // ExportSlides renders the saved pack to images, one per slide, and writes
-// them with the notes as a PowerPoint or OpenDocument presentation at out.
+// them with the notes as a PowerPoint presentation at out.
 func (p *Project) ExportSlides(ctx context.Context, f Format, out string, progress func(done, total int)) (*Exported, error) {
 	d, err := deck.Load(p.Dir)
 	if err != nil {
@@ -145,12 +143,6 @@ func (p *Project) ExportSlides(ctx context.Context, f Format, out string, progre
 			pd.Slides = append(pd.Slides, pptx.Slide{PNG: images[i], Title: r.Title, Notes: d.Slides[i].Notes})
 		}
 		err = pptx.Write(&buf, pd)
-	case FormatODP:
-		od := odp.Deck{Title: d.Title(), Author: d.Settings.Author, Width: res.Width, Height: res.Height}
-		for i, r := range res.Slides {
-			od.Slides = append(od.Slides, odp.Slide{PNG: images[i], Title: r.Title, Notes: d.Slides[i].Notes})
-		}
-		err = odp.Write(&buf, od)
 	default:
 		return nil, fmt.Errorf("cannot export slides as %s", f.Name)
 	}

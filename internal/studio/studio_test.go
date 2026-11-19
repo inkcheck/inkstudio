@@ -240,7 +240,7 @@ func TestExportSlides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, f := range []Format{FormatPPTX, FormatODP} {
+	for _, f := range []Format{FormatPPTX} {
 		out := filepath.Join(t.TempDir(), "talk."+f.Ext)
 		calls := 0
 		res, err := p.ExportSlides(t.Context(), f, out, func(done, total int) { calls++ })

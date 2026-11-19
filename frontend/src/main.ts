@@ -809,7 +809,7 @@ async function exportTheme(name: string) {
 // ---- export --------------------------------------------------------------
 
 let exporting = false;
-const FORMAT_NAMES: Record<ExportFormat, string> = { pdf: "PDF", pptx: "PowerPoint", odp: "OpenDocument" };
+const FORMAT_NAMES: Record<ExportFormat, string> = { pdf: "PDF", pptx: "PowerPoint" };
 
 async function exportAs(format: ExportFormat) {
   closeExportMenu();

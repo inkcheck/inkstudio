@@ -65,7 +65,7 @@ export interface ThemeProp {
   group: string;
 }
 
-export type ExportFormat = "pdf" | "pptx" | "odp";
+export type ExportFormat = "pdf" | "pptx";
 
 /** Sets a key, or removes it when value is null. */
 export interface Change {

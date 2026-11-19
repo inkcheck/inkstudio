@@ -16,7 +16,7 @@ func TestExportTo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, f := range []Format{FormatPPTX, FormatODP} {
+	for _, f := range []Format{FormatPPTX} {
 		if _, err := p.ExportSlides(t.Context(), f, out+"/talk."+f.Ext, nil); err != nil {
 			t.Fatal(err)
 		}

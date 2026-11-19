@@ -200,9 +200,6 @@ func appMenu(app *application.App, st *studio.Studio) *application.Menu {
 	file.Add("Export PowerPoint…").SetAccelerator("CmdOrCtrl+Shift+E").OnClick(func(*application.Context) {
 		app.Event.Emit("menu:export", "pptx")
 	})
-	file.Add("Export OpenDocument…").OnClick(func(*application.Context) {
-		app.Event.Emit("menu:export", "odp")
-	})
 	file.AddSeparator()
 	file.Add("Share as .inkdeck…").OnClick(func(*application.Context) {
 		app.Event.Emit("menu:share")

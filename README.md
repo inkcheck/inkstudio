@@ -127,12 +127,12 @@ unpacks into a hidden folder, checks the template loads, and only then
 moves it into place. A template with the same name is replaced only after
 you confirm.
 
-## Phase 4: PowerPoint, OpenDocument and the theme editor
+## Phase 4: PowerPoint and the theme editor
 
-- **Export ▾** in the toolbar, or the File menu, exports a **PDF** (⌘E), a
-  **PowerPoint** file (⇧⌘E) or an **OpenDocument** presentation (`.odp`,
-  for LibreOffice Impress and Keynote).
-  - In PowerPoint and OpenDocument files each slide is a **picture**,
+- **Export ▾** in the toolbar, or the File menu, exports a **PDF** (⌘E) or a
+  **PowerPoint** file (⇧⌘E). Keynote, Google Slides and LibreOffice open
+  PowerPoint files, so there is no separate OpenDocument export.
+  - In PowerPoint files each slide is a **picture**,
     rendered at twice the slide size (2560 × 1440 for 16:9), so they look
     exactly like the PDF. The slide's title is the picture's alt text, and
     its `!--` notes are the speaker notes.
@@ -185,7 +185,6 @@ or 1 GB, and files without a `slides/` folder. `unzip` opens one too.
 main.go              Wails app, menu, window, last-opened pack
 internal/studio/     the backend: pack files, rendering, watching, exports, HTTP API
 platform/pptx/       a PowerPoint writer, for any program: one picture and its notes per slide
-platform/odp/        the same for OpenDocument
 frontend/            Vite + TypeScript + CodeMirror 6
 ```
 
@@ -198,7 +197,7 @@ and the backend pushes file changes as Wails events:
 | `POST /api/open`, `POST /api/new` | ask for a folder, then open it |
 | `GET`/`PUT /api/file?path=` | read or save a text file of the pack |
 | `POST /api/render` | render with unsaved text, `{"overlay": {path: text}}`; returns each slide's frontmatter, notes, layout and theme |
-| `POST /api/export/{pdf,pptx,odp}` | ask where to save, then export the saved pack; slide images send `export:progress` events |
+| `POST /api/export/{pdf,pptx}` | ask where to save, then export the saved pack; slide images send `export:progress` events |
 | `POST /api/theme/props`, `POST /api/edit/theme` | a theme's custom properties, and setting them in its CSS text |
 | `POST /api/theme/duplicate` | copy a theme to a new name |
 | `GET /api/templates` | the template packs, their layouts, themes and theme colours |
