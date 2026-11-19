@@ -129,13 +129,26 @@ you confirm.
 
 ## Phase 4: PowerPoint and the theme editor
 
-- **Export ▾** in the toolbar, or the File menu, exports a **PDF** (⌘E) or a
-  **PowerPoint** file (⇧⌘E). Keynote, Google Slides and LibreOffice open
+- **Export ▾** in the toolbar, or the File menu, exports a **PDF** (⌘E) or
+  a **PowerPoint** file. Keynote, Google Slides and LibreOffice open
   PowerPoint files, so there is no separate OpenDocument export.
-  - In PowerPoint files each slide is a **picture**,
-    rendered at twice the slide size (2560 × 1440 for 16:9), so they look
-    exactly like the PDF. The slide's title is the picture's alt text, and
-    its `!--` notes are the speaker notes.
+  - **PowerPoint, editable** (⇧⌘E) has text boxes, shapes and pictures you
+    can change. InkStudio reads each slide as the browser laid it out:
+    headings, paragraphs and code become text boxes with their fonts,
+    sizes, colours, bold, italics and links; lists become bulleted or
+    numbered lists; boxes, callouts and table rules become rectangles; and
+    images, diagrams, logos and gradients become pictures. Numbers that CSS
+    adds, such as the agenda's, become text.
+  - **PowerPoint, pictures** makes each slide one picture, at twice the
+    slide size (2560 × 1440 for 16:9), exactly like the PDF, but not
+    editable.
+  - Both carry the `!--` notes as speaker notes. The file says it comes
+    from PowerPoint 16, so current PowerPoint opens it without
+    compatibility mode.
+  - Fonts are named, not embedded: a computer without the template's
+    fonts (IBM Plex Sans in the default) shows another, and lines may
+    wrap differently. Each text box is a block of the slide, so an edited
+    paragraph does not push the ones below it down.
   - The slide size carries over: 16:9 is PowerPoint's own widescreen size,
     and A4 is A4. PowerPoint's 56-inch limit is kept by scaling.
   - The pictures are rendered by the same installed Chromium-based browser
@@ -184,7 +197,8 @@ or 1 GB, and files without a `slides/` folder. `unzip` opens one too.
 ```
 main.go              Wails app, menu, window, last-opened pack
 internal/studio/     the backend: pack files, rendering, watching, exports, HTTP API
-platform/pptx/       a PowerPoint writer, for any program: one picture and its notes per slide
+platform/pptx/       a PowerPoint writer, for any program: text boxes, shapes and pictures, and notes
+platform/slidedoc/   the slide model it writes: what the editable export reads from the browser
 frontend/            Vite + TypeScript + CodeMirror 6
 ```
 
@@ -197,7 +211,7 @@ and the backend pushes file changes as Wails events:
 | `POST /api/open`, `POST /api/new` | ask for a folder, then open it |
 | `GET`/`PUT /api/file?path=` | read or save a text file of the pack |
 | `POST /api/render` | render with unsaved text, `{"overlay": {path: text}}`; returns each slide's frontmatter, notes, layout and theme |
-| `POST /api/export/{pdf,pptx}` | ask where to save, then export the saved pack; slide images send `export:progress` events |
+| `POST /api/export/{pdf,pptx,pptx-pictures}` | ask where to save, then export the saved pack; slide images send `export:progress` events |
 | `POST /api/theme/props`, `POST /api/edit/theme` | a theme's custom properties, and setting them in its CSS text |
 | `POST /api/theme/duplicate` | copy a theme to a new name |
 | `GET /api/templates` | the template packs, their layouts, themes and theme colours |
