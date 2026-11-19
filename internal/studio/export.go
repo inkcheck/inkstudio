@@ -22,22 +22,26 @@ import (
 
 // Format is an export format.
 type Format struct {
+	// ID names it in the API: export/<ID>.
+	ID string
 	// Ext is the file extension, without the dot.
 	Ext string
 	// Name is what save dialogs call it.
 	Name string
 }
 
-// Export formats.
+// Export formats. An editable PowerPoint has text boxes, shapes and
+// pictures; the pictures one has one picture per slide, exactly as drawn.
 var (
-	FormatPDF  = Format{"pdf", "PDF"}
-	FormatPPTX = Format{"pptx", "PowerPoint presentation"}
+	FormatPDF          = Format{"pdf", "pdf", "PDF"}
+	FormatPPTX         = Format{"pptx", "pptx", "PowerPoint presentation"}
+	FormatPPTXPictures = Format{"pptx-pictures", "pptx", "PowerPoint presentation"}
 )
 
-// FormatByExt returns the format with extension ext.
-func FormatByExt(ext string) (Format, bool) {
-	for _, f := range []Format{FormatPDF, FormatPPTX} {
-		if f.Ext == ext {
+// FormatByID returns the format called id.
+func FormatByID(id string) (Format, bool) {
+	for _, f := range []Format{FormatPDF, FormatPPTX, FormatPPTXPictures} {
+		if f.ID == id {
 			return f, true
 		}
 	}
@@ -129,25 +133,40 @@ func (p *Project) ExportSlides(ctx context.Context, f Format, out string, progre
 	if err != nil {
 		return nil, err
 	}
-	images, err := rasterize(ctx, res.HTML, res.Width, res.Height, imageScale, progress)
+	if f != FormatPPTX && f != FormatPPTXPictures {
+		return nil, fmt.Errorf("cannot export slides as %s", f.Name)
+	}
+	b, err := openBrowserDeck(ctx, res.HTML, res.Width, res.Height, imageScale)
 	if err != nil {
 		return nil, err
 	}
-	if len(images) != len(res.Slides) {
-		return nil, fmt.Errorf("rendered %d slide images for %d slides", len(images), len(res.Slides))
+	defer b.Close()
+	if b.Slides != len(res.Slides) {
+		return nil, fmt.Errorf("the browser has %d slides of %d", b.Slides, len(res.Slides))
+	}
+	pd := slidedoc.Deck{Title: d.Title(), Author: d.Settings.Author, Width: res.Width, Height: res.Height}
+	for i, r := range res.Slides {
+		notes := d.Slides[i].Notes
+		if f == FormatPPTXPictures {
+			png, err := b.Picture(i)
+			if err != nil {
+				return nil, err
+			}
+			pd.Slides = append(pd.Slides, slidedoc.Picture(png, res.Width, res.Height, r.Title, notes))
+		} else {
+			s, err := b.Parts(i)
+			if err != nil {
+				return nil, err
+			}
+			s.Title, s.Notes = r.Title, notes
+			pd.Slides = append(pd.Slides, *s)
+		}
+		if progress != nil {
+			progress(i+1, len(res.Slides))
+		}
 	}
 	var buf bytes.Buffer
-	switch f {
-	case FormatPPTX:
-		pd := slidedoc.Deck{Title: d.Title(), Author: d.Settings.Author, Width: res.Width, Height: res.Height}
-		for i, r := range res.Slides {
-			pd.Slides = append(pd.Slides, slidedoc.Picture(images[i], res.Width, res.Height, r.Title, d.Slides[i].Notes))
-		}
-		err = pptx.Write(&buf, pd)
-	default:
-		return nil, fmt.Errorf("cannot export slides as %s", f.Name)
-	}
-	if err != nil {
+	if err := pptx.Write(&buf, pd); err != nil {
 		return nil, err
 	}
 	if err := os.WriteFile(out, buf.Bytes(), 0o644); err != nil {
@@ -157,7 +176,7 @@ func (p *Project) ExportSlides(ctx context.Context, f Format, out string, progre
 	if warnings == nil {
 		warnings = []string{}
 	}
-	return &Exported{Path: out, Slides: len(images), Warnings: warnings}, nil
+	return &Exported{Path: out, Slides: len(pd.Slides), Warnings: warnings}, nil
 }
 
 // Reveal shows path in the system's file manager.

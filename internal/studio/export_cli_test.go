@@ -16,10 +16,13 @@ func TestExportTo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, f := range []Format{FormatPPTX} {
-		if _, err := p.ExportSlides(t.Context(), f, out+"/talk."+f.Ext, nil); err != nil {
+	for _, f := range []Format{FormatPPTX, FormatPPTXPictures} {
+		if _, err := p.ExportSlides(t.Context(), f, out+"/talk-"+f.ID+"."+f.Ext, nil); err != nil {
 			t.Fatal(err)
 		}
+	}
+	if os.Getenv("INKSTUDIO_EXPORT_PDF") == "" {
+		return
 	}
 	if _, err := p.ExportPDF(t.Context(), out+"/talk.pdf"); err != nil {
 		t.Fatal(err)

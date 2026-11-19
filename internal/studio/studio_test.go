@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"image/png"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -240,7 +241,7 @@ func TestExportSlides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, f := range []Format{FormatPPTX} {
+	for _, f := range []Format{FormatPPTXPictures} {
 		out := filepath.Join(t.TempDir(), "talk."+f.Ext)
 		calls := 0
 		res, err := p.ExportSlides(t.Context(), f, out, func(done, total int) { calls++ })
@@ -270,5 +271,53 @@ func TestExportSlides(t *testing.T) {
 		if err != nil || cfg.Width != 2560 || cfg.Height != 1440 {
 			t.Errorf("%s: slide image %dx%d, %v; want 2560x1440", f.Ext, cfg.Width, cfg.Height, err)
 		}
+	}
+}
+
+func TestExportEditable(t *testing.T) {
+	if testing.Short() {
+		t.Skip("renders with a browser")
+	}
+	if _, err := pdf.FindBrowser(); err != nil {
+		t.Skip("no Chromium-based browser")
+	}
+	p, err := Open(samplePack(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "talk.pptx")
+	if _, err := p.ExportSlides(t.Context(), FormatPPTX, out, nil); err != nil {
+		t.Fatal(err)
+	}
+	zr, err := zip.OpenReader(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer zr.Close()
+	read := func(name string) string {
+		for _, f := range zr.File {
+			if f.Name == name {
+				rc, _ := f.Open()
+				b, _ := io.ReadAll(rc)
+				rc.Close()
+				return string(b)
+			}
+		}
+		t.Fatalf("no %s", name)
+		return ""
+	}
+	title := read("ppt/slides/slide1.xml")
+	for _, want := range []string{`<a:t>Inkpress</a:t>`, `<a:t>Markdown in, slides out</a:t>`, `typeface="IBM Plex Sans"`, `<p:pic>`} {
+		if !strings.Contains(title, want) {
+			t.Errorf("slide 1 lacks %s", want)
+		}
+	}
+	// The agenda's numbers come from CSS counters; they become text.
+	if agenda := read("ppt/slides/slide2.xml"); !strings.Contains(agenda, `<a:t>01</a:t>`) {
+		t.Error("slide 2 lacks its 01")
+	}
+	// Bullets are real bullets.
+	if why := read("ppt/slides/slide3.xml"); !strings.Contains(why, `<a:buChar char="•"/>`) {
+		t.Error("slide 3 has no bullets")
 	}
 }

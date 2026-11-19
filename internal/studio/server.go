@@ -259,7 +259,7 @@ func (s *Studio) api(w http.ResponseWriter, r *http.Request, route string) {
 	case route == "render" && r.Method == http.MethodPost:
 		result, err = s.render(r)
 	case strings.HasPrefix(route, "export/") && r.Method == http.MethodPost:
-		f, ok := FormatByExt(strings.TrimPrefix(route, "export/"))
+		f, ok := FormatByID(strings.TrimPrefix(route, "export/"))
 		if !ok {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
