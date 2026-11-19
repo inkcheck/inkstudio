@@ -82,8 +82,8 @@ func (p *Project) DefaultExport(f Format) string {
 	return filepath.Join(p.Dir, name)
 }
 
-// ExportPDF renders the saved pack and prints it to out with an installed
-// Chromium-based browser, as inkpress does.
+// ExportPDF renders the saved pack and prints it to out, one page per
+// slide, with the export engine.
 func (p *Project) ExportPDF(ctx context.Context, out string) (*Exported, error) {
 	d, err := deck.Load(p.Dir)
 	if err != nil {
@@ -93,23 +93,18 @@ func (p *Project) ExportPDF(ctx context.Context, out string) (*Exported, error) 
 	if err != nil {
 		return nil, err
 	}
-	tmp, err := os.CreateTemp("", "inkstudio-*.html")
-	if err != nil {
-		return nil, err
-	}
-	defer os.Remove(tmp.Name())
-	if _, err := tmp.Write(res.HTML); err != nil {
-		tmp.Close()
-		return nil, err
-	}
-	if err := tmp.Close(); err != nil {
-		return nil, err
-	}
-	buf, err := pdf.Print(ctx, tmp.Name(), pdf.Options{Width: res.Width, Height: res.Height, Timeout: 2 * time.Minute})
-	if err != nil {
-		if _, ferr := pdf.FindBrowser(); ferr != nil {
-			return nil, fmt.Errorf("PDF export needs Chrome, Chromium, Edge, Brave or Vivaldi installed, or %s set to one: %w", pdf.BrowserEnv, err)
+	var buf []byte
+	if Engine == EngineWebKit {
+		b, err := openDeck(ctx, res.HTML, p.Dir, res.Width, res.Height, 1, true)
+		if err != nil {
+			return nil, err
 		}
+		buf, err = b.PDF()
+		b.Close()
+		if err != nil {
+			return nil, err
+		}
+	} else if buf, err = printChrome(ctx, res.HTML, res.Width, res.Height); err != nil {
 		return nil, err
 	}
 	if err := os.WriteFile(out, buf, 0o644); err != nil {
@@ -136,7 +131,7 @@ func (p *Project) ExportSlides(ctx context.Context, f Format, out string, progre
 	if f != FormatPPTX && f != FormatPPTXPictures {
 		return nil, fmt.Errorf("cannot export slides as %s", f.Name)
 	}
-	b, err := openBrowserDeck(ctx, res.HTML, res.Width, res.Height, imageScale)
+	b, err := openDeck(ctx, res.HTML, p.Dir, res.Width, res.Height, imageScale, false)
 	if err != nil {
 		return nil, err
 	}
@@ -177,6 +172,24 @@ func (p *Project) ExportSlides(ctx context.Context, f Format, out string, progre
 		warnings = []string{}
 	}
 	return &Exported{Path: out, Slides: len(pd.Slides), Warnings: warnings}, nil
+}
+
+// printChrome prints a rendered deck with an installed Chromium-based
+// browser, as inkpress does.
+func printChrome(ctx context.Context, html []byte, width, height float64) ([]byte, error) {
+	tmp, err := writeTemp(os.TempDir(), html)
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(tmp)
+	buf, err := pdf.Print(ctx, tmp, pdf.Options{Width: width, Height: height, Timeout: 2 * time.Minute})
+	if err != nil {
+		if _, ferr := pdf.FindBrowser(); ferr != nil {
+			return nil, fmt.Errorf("PDF export needs Chrome, Chromium, Edge, Brave or Vivaldi installed, or %s set to one: %w", pdf.BrowserEnv, err)
+		}
+		return nil, err
+	}
+	return buf, nil
 }
 
 // Reveal shows path in the system's file manager.

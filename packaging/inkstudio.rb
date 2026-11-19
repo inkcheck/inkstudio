@@ -26,9 +26,4 @@ cask "inkstudio" do
     "~/Library/Caches/InkStudio",
     "~/Library/WebKit/InkStudio",
   ]
-
-  caveats <<~EOS
-    Exporting PDF and PowerPoint files uses an installed
-    Chrome, Chromium, Edge, Brave or Vivaldi.
-  EOS
 end

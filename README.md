@@ -84,9 +84,9 @@ the open presentation, and opens a folder dropped on its Dock icon.
   Up/Down, Space, Home and End. ⇧⌘O hides the notes, and the bar above them
   resizes them. Back in the editor (⌘1), the slide you were on is open.
 - **Export PDF** (⌘E) saves your edits, asks where to put the file
-  (settings' `output`, or `<pack>.pdf`, by default) and prints it as
-  `inkpress pdf` does: with an installed Chrome, Chromium, Edge, Brave or
-  Vivaldi, or the browser in `INKPRESS_BROWSER`.
+  (settings' `output`, or `<pack>.pdf`, by default) and prints it, one
+  page per slide, at the slide's size (96 CSS pixels to the inch, so an A4
+  deck prints as A4). See *Exporting with WebKit* for what draws it.
 - **Diagrams are cached** between previews, so typing in a slide no longer
   runs inkline for every diagram in the deck. A change to any file besides
   the slides and settings, such as an icon, clears the cache.
@@ -151,11 +151,7 @@ you confirm.
     paragraph does not push the ones below it down.
   - The slide size carries over: 16:9 is PowerPoint's own widescreen size,
     and A4 is A4. PowerPoint's 56-inch limit is kept by scaling.
-  - The pictures are rendered by the same installed Chromium-based browser
-    the PDF uses. The status bar counts the slides as they render.
-  - The text in the slides is not editable in PowerPoint. That needs a
-    native export, which maps headings, lists and columns to text boxes:
-    a project of its own.
+  - The status bar counts the slides as they export.
 - The **theme editor**: **Edit themes…** on a template in the inspector.
   - It lists the theme's CSS custom properties (`--bg`, `--fg`, `--accent`
     …) under the comments that group them, with a colour picker for each
@@ -192,6 +188,24 @@ normal folder, and opens that. The `.inkdeck` itself is never changed. The
 unpacking refuses paths that leave the folder, links, more than 5000 files
 or 1 GB, and files without a `slides/` folder. `unzip` opens one too.
 
+## Exporting with WebKit
+
+The Mac app exports with the WebKit it draws with: the PDF, the
+PowerPoint pictures and the editable PowerPoint come from the same engine
+as the preview, so they match it, and no browser has to be installed. It
+loads the deck into a WebKit view that is never on screen
+(`platform/webkit`), prints each slide as a PDF page and joins them, and
+takes pictures of slides and their parts. WebKit draws CSS masks as solid
+boxes in PDFs, so masked elements, such as the default template's logo,
+are printed as pictures of themselves.
+
+`inkpress pdf` prints with Chrome, so its PDFs and InkStudio's can differ
+in small ways. The browser build (`make web`) and any build without
+WebKit export with an installed Chrome, Chromium, Edge, Brave or Vivaldi,
+as inkpress does; `studio.Engine` picks the engine. Windows and Linux
+can add their system engines (WebView2 and WebKitGTK) behind the same
+interface.
+
 ## How it works
 
 ```
@@ -199,6 +213,7 @@ main.go              Wails app, menu, window, last-opened pack
 internal/studio/     the backend: pack files, rendering, watching, exports, HTTP API
 platform/pptx/       a PowerPoint writer, for any program: text boxes, shapes and pictures, and notes
 platform/slidedoc/   the slide model it writes: what the editable export reads from the browser
+platform/webkit/     an offscreen WebKit view: pictures and PDFs of pages, on macOS
 frontend/            Vite + TypeScript + CodeMirror 6
 ```
 

@@ -15,6 +15,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/events"
 
 	"github.com/inkcheck/inkstudio/internal/studio"
+	"github.com/inkcheck/inkstudio/platform/webkit"
 )
 
 //go:embed all:frontend/dist
@@ -25,6 +26,11 @@ var version = "dev"
 
 func main() {
 	fixPath()
+	// Export with the WebKit the app draws with: exports match the preview,
+	// and need no browser installed.
+	if webkit.Available {
+		studio.Engine = studio.EngineWebKit
+	}
 
 	dist, err := fs.Sub(assets, "frontend/dist")
 	if err != nil {

@@ -7,10 +7,15 @@ import (
 
 // TestExportTo writes real files for checking by hand or with other tools:
 // INKSTUDIO_EXPORT_PACK=<pack> INKSTUDIO_EXPORT_OUT=<dir> go test -run ExportTo.
+// INKSTUDIO_ENGINE picks webkit or chrome, and INKSTUDIO_EXPORT_PDF=1 adds a PDF.
 func TestExportTo(t *testing.T) {
 	pack, out := os.Getenv("INKSTUDIO_EXPORT_PACK"), os.Getenv("INKSTUDIO_EXPORT_OUT")
 	if pack == "" || out == "" {
 		t.Skip("set INKSTUDIO_EXPORT_PACK and INKSTUDIO_EXPORT_OUT")
+	}
+	if e := os.Getenv("INKSTUDIO_ENGINE"); e != "" {
+		defer func(old string) { Engine = old }(Engine)
+		Engine = e
 	}
 	p, err := Open(pack)
 	if err != nil {

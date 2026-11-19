@@ -16,6 +16,8 @@ import (
 
 	"github.com/inkcheck/inkpress/pdf"
 	"github.com/inkcheck/inkpress/scaffold"
+
+	"github.com/inkcheck/inkstudio/platform/webkit"
 )
 
 func samplePack(t *testing.T) string {
@@ -186,31 +188,27 @@ func TestWatch(t *testing.T) {
 }
 
 func TestExportPDF(t *testing.T) {
-	if testing.Short() {
-		t.Skip("prints with a browser")
-	}
-	if _, err := pdf.FindBrowser(); err != nil {
-		t.Skip("no Chromium-based browser")
-	}
-	p, err := Open(samplePack(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := p.DefaultPDF(); filepath.Base(got) != "talk.pdf" {
-		t.Errorf("DefaultPDF = %q", got)
-	}
-	out := filepath.Join(t.TempDir(), "out.pdf")
-	res, err := p.ExportPDF(t.Context(), out)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err := os.ReadFile(out)
-	if err != nil || !bytes.HasPrefix(b, []byte("%PDF")) {
-		t.Fatalf("not a PDF: %v", err)
-	}
-	if res.Slides != 13 {
-		t.Errorf("slides = %d", res.Slides)
-	}
+	forEngines(t, func(t *testing.T) {
+		p, err := Open(samplePack(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := p.DefaultPDF(); filepath.Base(got) != "talk.pdf" {
+			t.Errorf("DefaultPDF = %q", got)
+		}
+		out := filepath.Join(t.TempDir(), "out.pdf")
+		res, err := p.ExportPDF(t.Context(), out)
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := os.ReadFile(out)
+		if err != nil || !bytes.HasPrefix(b, []byte("%PDF")) {
+			t.Fatalf("not a PDF: %v", err)
+		}
+		if res.Slides != 13 {
+			t.Errorf("slides = %d", res.Slides)
+		}
+	})
 }
 
 func TestRenderSlideInfo(t *testing.T) {
@@ -231,93 +229,107 @@ func TestRenderSlideInfo(t *testing.T) {
 }
 
 func TestExportSlides(t *testing.T) {
-	if testing.Short() {
-		t.Skip("renders with a browser")
-	}
-	if _, err := pdf.FindBrowser(); err != nil {
-		t.Skip("no Chromium-based browser")
-	}
-	p, err := Open(samplePack(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, f := range []Format{FormatPPTXPictures} {
-		out := filepath.Join(t.TempDir(), "talk."+f.Ext)
-		calls := 0
-		res, err := p.ExportSlides(t.Context(), f, out, func(done, total int) { calls++ })
+	forEngines(t, func(t *testing.T) {
+		p, err := Open(samplePack(t))
 		if err != nil {
-			t.Fatalf("%s: %v", f.Ext, err)
+			t.Fatal(err)
 		}
-		if res.Slides != 13 || calls != 13 {
-			t.Errorf("%s: %d slides, %d progress calls", f.Ext, res.Slides, calls)
+		for _, f := range []Format{FormatPPTXPictures} {
+			out := filepath.Join(t.TempDir(), "talk."+f.Ext)
+			calls := 0
+			res, err := p.ExportSlides(t.Context(), f, out, func(done, total int) { calls++ })
+			if err != nil {
+				t.Fatalf("%s: %v", f.Ext, err)
+			}
+			if res.Slides != 13 || calls != 13 {
+				t.Errorf("%s: %d slides, %d progress calls", f.Ext, res.Slides, calls)
+			}
+			zr, err := zip.OpenReader(out)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var img *zip.File
+			for _, zf := range zr.File {
+				if strings.HasSuffix(zf.Name, "1.png") {
+					img = zf
+				}
+			}
+			if img == nil {
+				t.Fatalf("%s: no slide image", f.Ext)
+			}
+			rc, _ := img.Open()
+			cfg, err := png.DecodeConfig(rc)
+			rc.Close()
+			zr.Close()
+			if err != nil || cfg.Width != 2560 || cfg.Height != 1440 {
+				t.Errorf("%s: slide image %dx%d, %v; want 2560x1440", f.Ext, cfg.Width, cfg.Height, err)
+			}
+		}
+	})
+}
+
+func TestExportEditable(t *testing.T) {
+	forEngines(t, func(t *testing.T) {
+		p, err := Open(samplePack(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := filepath.Join(t.TempDir(), "talk.pptx")
+		if _, err := p.ExportSlides(t.Context(), FormatPPTX, out, nil); err != nil {
+			t.Fatal(err)
 		}
 		zr, err := zip.OpenReader(out)
 		if err != nil {
 			t.Fatal(err)
 		}
-		var img *zip.File
-		for _, zf := range zr.File {
-			if strings.HasSuffix(zf.Name, "1.png") {
-				img = zf
+		defer zr.Close()
+		read := func(name string) string {
+			for _, f := range zr.File {
+				if f.Name == name {
+					rc, _ := f.Open()
+					b, _ := io.ReadAll(rc)
+					rc.Close()
+					return string(b)
+				}
+			}
+			t.Fatalf("no %s", name)
+			return ""
+		}
+		title := read("ppt/slides/slide1.xml")
+		for _, want := range []string{`<a:t>Inkpress</a:t>`, `<a:t>Markdown in, slides out</a:t>`, `typeface="IBM Plex Sans"`, `<p:pic>`} {
+			if !strings.Contains(title, want) {
+				t.Errorf("slide 1 lacks %s", want)
 			}
 		}
-		if img == nil {
-			t.Fatalf("%s: no slide image", f.Ext)
+		// The agenda's numbers come from CSS counters; they become text.
+		if agenda := read("ppt/slides/slide2.xml"); !strings.Contains(agenda, `<a:t>01</a:t>`) {
+			t.Error("slide 2 lacks its 01")
 		}
-		rc, _ := img.Open()
-		cfg, err := png.DecodeConfig(rc)
-		rc.Close()
-		zr.Close()
-		if err != nil || cfg.Width != 2560 || cfg.Height != 1440 {
-			t.Errorf("%s: slide image %dx%d, %v; want 2560x1440", f.Ext, cfg.Width, cfg.Height, err)
+		// Bullets are real bullets.
+		if why := read("ppt/slides/slide3.xml"); !strings.Contains(why, `<a:buChar char="•"/>`) {
+			t.Error("slide 3 has no bullets")
 		}
-	}
+	})
 }
 
-func TestExportEditable(t *testing.T) {
+// forEngines runs an export test with each engine this machine has.
+func forEngines(t *testing.T, test func(t *testing.T)) {
 	if testing.Short() {
 		t.Skip("renders with a browser")
 	}
-	if _, err := pdf.FindBrowser(); err != nil {
-		t.Skip("no Chromium-based browser")
-	}
-	p, err := Open(samplePack(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	out := filepath.Join(t.TempDir(), "talk.pptx")
-	if _, err := p.ExportSlides(t.Context(), FormatPPTX, out, nil); err != nil {
-		t.Fatal(err)
-	}
-	zr, err := zip.OpenReader(out)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer zr.Close()
-	read := func(name string) string {
-		for _, f := range zr.File {
-			if f.Name == name {
-				rc, _ := f.Open()
-				b, _ := io.ReadAll(rc)
-				rc.Close()
-				return string(b)
+	defer func(e string) { Engine = e }(Engine)
+	for _, e := range []string{EngineWebKit, EngineChrome} {
+		t.Run(e, func(t *testing.T) {
+			switch {
+			case e == EngineWebKit && !webkit.Available:
+				t.Skip("no WebKit")
+			case e == EngineChrome:
+				if _, err := pdf.FindBrowser(); err != nil {
+					t.Skip("no Chromium-based browser")
+				}
 			}
-		}
-		t.Fatalf("no %s", name)
-		return ""
-	}
-	title := read("ppt/slides/slide1.xml")
-	for _, want := range []string{`<a:t>Inkpress</a:t>`, `<a:t>Markdown in, slides out</a:t>`, `typeface="IBM Plex Sans"`, `<p:pic>`} {
-		if !strings.Contains(title, want) {
-			t.Errorf("slide 1 lacks %s", want)
-		}
-	}
-	// The agenda's numbers come from CSS counters; they become text.
-	if agenda := read("ppt/slides/slide2.xml"); !strings.Contains(agenda, `<a:t>01</a:t>`) {
-		t.Error("slide 2 lacks its 01")
-	}
-	// Bullets are real bullets.
-	if why := read("ppt/slides/slide3.xml"); !strings.Contains(why, `<a:buChar char="•"/>`) {
-		t.Error("slide 3 has no bullets")
+			Engine = e
+			test(t)
+		})
 	}
 }
