@@ -20,15 +20,15 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  HUGO_VERSION: 0.166.0
+  HUGO_VERSION: 0.170.1
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: site/go.mod
 
@@ -39,14 +39,14 @@ jobs:
           sudo dpkg -i "$RUNNER_TEMP/hugo.deb"
 
       - id: pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       # The site is served under the Pages base URL, e.g. /inkstudio/.
       - name: Build the site
         working-directory: site
         run: hugo --gc --minify --baseURL "${{ steps.pages.outputs.base_url }}/"
 
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site/public
 
@@ -58,4 +58,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
