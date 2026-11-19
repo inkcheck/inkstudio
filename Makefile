@@ -1,7 +1,7 @@
 # InkStudio. Run `make` or `make help` for the list of targets.
 
 .DEFAULT_GOAL := help
-.PHONY: help frontend build run web snap test app notarize dmg install release-check release icon clean
+.PHONY: help frontend build run web snap screenshots site serve test app notarize dmg install release-check release icon clean
 
 export MACOSX_DEPLOYMENT_TARGET := 13.0
 export CGO_LDFLAGS := -mmacosx-version-min=13.0
@@ -32,6 +32,15 @@ bin/webkit-snap: tools/webkit-snap/snap.swift
 
 snap: bin/webkit-snap ## Snapshot `make web` in WebKit (macOS): OUT=file.png
 	bin/webkit-snap http://127.0.0.1:1416/ $(or $(OUT),snap.png) 1440 900 3
+
+screenshots: ## Take the site's screenshots of the UI, light and dark (macOS)
+	./scripts/screenshots.sh
+
+site: ## Build the site into site/public
+	cd site && hugo --gc --minify
+
+serve: ## Serve the site on http://localhost:1418/inkstudio/
+	cd site && hugo server --port 1418
 
 test: ## Run the Go tests and type-check the frontend
 	go test ./...

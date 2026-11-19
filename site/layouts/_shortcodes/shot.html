@@ -1,0 +1,20 @@
+{{- /*
+Shows a screenshot of InkStudio, taken by scripts/screenshots.sh, in the
+site's light or dark theme.
+
+@param {string} name     file stem under static/screenshots (e.g. editor)
+@param {string} caption  optional
+@param {string} class    optional extra class, such as inkstudio-hero-shot
+
+@example {{< shot name="editor" caption="The editor" >}}
+*/ -}}
+{{- $name := .Get "name" -}}
+{{- $caption := .Get "caption" -}}
+{{- $alt := $caption | default (printf "InkStudio: %s" $name) | plainify -}}
+<figure class="inkstudio-shot {{ .Get "class" }}">
+  <img class="inkstudio-light" src="{{ (printf "screenshots/%s-light.png" $name) | relURL }}" alt="{{ $alt }}" loading="lazy">
+  <img class="inkstudio-dark" src="{{ (printf "screenshots/%s-dark.png" $name) | relURL }}" alt="{{ $alt }}" loading="lazy">
+  {{- with $caption }}
+  <figcaption>{{ . | markdownify }}</figcaption>
+  {{- end }}
+</figure>

@@ -1,30 +1,56 @@
 # InkStudio
 
-InkStudio is a desktop app for [inkpress](https://github.com/inkcheck/inkpress) slide packs. It opens a
-folder of Markdown slides, edits them with a live preview, and (in later
-phases) presents and exports them. It is a [Wails](https://wails.io) v3 app:
-Go for the backend, which uses inkpress as a library, and the system webview
-for the UI.
+InkStudio is a Mac app for [inkpress](https://github.com/inkcheck/inkpress)
+presentations: folders of Markdown slides, one file per slide. It edits them
+with a live preview, presents them, changes their layouts and themes, and
+exports them to PDF and to PowerPoint, as editable slides or as pictures.
+
+**Documentation and downloads: https://inkcheck.github.io/inkstudio/**
 
 ```sh
-make run                       # build and run; reopens the last pack
-make run PACK=~/talks/review   # open a pack
+brew install --cask inkcheck/tap/inkstudio
+```
+
+## Building
+
+Building needs Go, Node and pnpm.
+
+```sh
+make run                       # build and run; reopens the last presentation
+make run PACK=~/Talks/review   # open one
 make test
 ```
+
+InkStudio is a [Wails](https://wails.io) v3 app: Go for the backend, which
+uses inkpress's packages (`github.com/inkcheck/inkpress` v0.3.0 or later),
+and the system webview for the interface. To work on both at once, point it
+at a local inkpress: `go work init . ../inkpress`.
 
 Run with `INKSTUDIO_DEBUG=1` to log every request the backend serves;
 JavaScript errors in the app are always logged to the terminal.
 
-`make web PACK=…` serves the same UI to a normal browser, and on macOS
-`make snap` saves a snapshot of it as WebKit draws it. Check UI changes in
-WebKit: the app runs in it, and it differs from Chrome (CSS `zoom`, for one,
-draws differently, which is why the thumbnails use transforms).
+`make web` serves the same interface to a normal browser, on inkpress's
+sample deck or `PACK=…`, and on macOS `make snap` saves a snapshot of it as
+WebKit draws it. Check interface changes in WebKit: the app runs in it, and
+it differs from Chrome (CSS `zoom`, for one, which is why the thumbnails
+use transforms).
 
-Building needs Go, Node and pnpm. InkStudio uses inkpress's packages from
-`github.com/inkcheck/inkpress` (v0.3.0 or later). To work on both at once,
-point it at a local clone: `go work init . ../inkpress`.
+## The site
 
-## Installing on a Mac
+`site/` is the documentation site, a Hugo site with the Hextra theme,
+styled like inkpress's. A push to `main` that changes it publishes it to
+GitHub Pages.
+
+```sh
+make serve          # http://localhost:1418/inkstudio/
+make screenshots    # retake the screenshots, light and dark (macOS)
+```
+
+The screenshots are of the interface on inkpress's sample deck, taken in
+WebKit by `scripts/screenshots.sh`; retake and commit them after changing
+the interface.
+
+## Packaging and releasing
 
 ```sh
 make install          # build, sign, notarise and copy InkStudio.app to /Applications
@@ -54,139 +80,10 @@ it), and staple the ticket. `MACOS_SIGN_IDENTITY` and `MACOS_NOTARY_PROFILE`
 override them, as for inkpress. The version comes from the latest `vX.Y.Z`
 tag, or 0.1.0.
 
-The app registers `.inktheme` files, so a double-click imports a theme into
-the open presentation, and opens a folder dropped on its Dock icon.
+The app registers `.inkdeck` and `.inktheme` files, so a double-click opens
+a shared presentation or imports a theme, and it opens a folder dropped on
+its Dock icon.
 `make icon` redraws the icon from `tools/make-icon/icon.swift`.
-
-## Phase 1: editor view
-
-- **Open** a pack (⌘O) or start a **new** one from inkpress's sample (⇧⌘N).
-  InkStudio reopens the last pack on start.
-- The **sidebar** lists `settings.toml`, `README.md` and the slides, with
-  each slide's number in the deck. A struck-through slide has `skip: true`.
-- The **editor** highlights Markdown and marks what inkpress gives meaning to:
-  the frontmatter, `|||` columns, `:::` boxes, and the `!--` notes.
-- The **preview** renders the deck as you type, before saving, and shows the
-  slide in the editor. ‹ › or ⌥PageUp/⌥PageDown move between slides. Errors
-  and warnings appear under it, and the last good preview stays up.
-- Edits **save themselves** a moment after you stop typing; ⌘S saves at
-  once. Changes made on disk by other editors or git are picked up.
-- Diagrams need `inkline` on the PATH, as for inkpress. InkStudio adds
-  `/opt/homebrew/bin`, `/usr/local/bin` and `~/go/bin` to the PATH, since an
-  app started from the Finder gets a minimal one.
-
-## Phase 2: presenter view and PDF
-
-- **Presenter** (⌘2, or the toolbar): thumbnails on the left, the slide on
-  the right, its frontmatter above and its notes below. The chips show the
-  template, layout and theme the slide gets; a dashed chip is a default, not
-  set in the frontmatter. Click a thumbnail, or use the arrow keys, Page
-  Up/Down, Space, Home and End. ⇧⌘O hides the notes, and the bar above them
-  resizes them. Back in the editor (⌘1), the slide you were on is open.
-- **Export PDF** (⌘E) saves your edits, asks where to put the file
-  (settings' `output`, or `<pack>.pdf`, by default) and prints it, one
-  page per slide, at the slide's size (96 CSS pixels to the inch, so an A4
-  deck prints as A4). See *Exporting with WebKit* for what draws it.
-- **Diagrams are cached** between previews, so typing in a slide no longer
-  runs inkline for every diagram in the deck. A change to any file besides
-  the slides and settings, such as an icon, clears the cache.
-
-## Phase 3: inspector and themes
-
-- The **inspector** (⌥⌘I, or the toolbar) sits on the right in both views.
-  - **Slide**: the layout, theme and template of the slide you're on. Each
-    has a "Default" or "Deck" choice, which removes the key from the
-    frontmatter.
-  - **Presentation**: title, author, date, the template and theme, and the
-    page size: 16:9, 16:10, 4:3, square, A4 and US Letter in either
-    orientation, or a custom W:H. Paper sizes set the width to the paper's
-    width at 96 px per inch, so the PDF prints at true size.
-  - **Templates**: every template in `.templates/`, with its themes as
-    colour swatches. Click a theme to use it. Each template can be exported
-    as an `.inktheme`, and **Import…** (also File ▸ Import Theme…) adds one.
-- The inspector edits `settings.toml` and the frontmatter as **text**: it
-  changes the one line, keeps comments and order, and checks the result
-  parses. The change goes into the editor like typing, so ⌘Z undoes it,
-  and it saves like any other edit.
-
-### .inktheme files
-
-An `.inktheme` is a zip of one inkpress template pack: `template.toml`,
-`style.css`, `themes/`, `layouts/`, and any `partials/`, `assets/` and
-`fonts/`. `template.toml` is at the root of the zip, or in one folder at the
-root (as macOS's "Compress" makes). The template is named after the file:
-`Ocean.inktheme` installs as `.templates/Ocean`.
-
-```sh
-cd .templates/mytheme && zip -r ../../mytheme.inktheme .   # by hand
-```
-
-Importing refuses paths that leave the template folder, links, more than
-2000 files or 200 MB, and zips with no or several `template.toml`. It
-unpacks into a hidden folder, checks the template loads, and only then
-moves it into place. A template with the same name is replaced only after
-you confirm.
-
-## Phase 4: PowerPoint and the theme editor
-
-- **Export ▾** in the toolbar, or the File menu, exports a **PDF** (⌘E) or
-  a **PowerPoint** file. Keynote, Google Slides and LibreOffice open
-  PowerPoint files, so there is no separate OpenDocument export.
-  - **PowerPoint, editable** (⇧⌘E) has text boxes, shapes and pictures you
-    can change. InkStudio reads each slide as the browser laid it out:
-    headings, paragraphs and code become text boxes with their fonts,
-    sizes, colours, bold, italics and links; lists become bulleted or
-    numbered lists; boxes, callouts and table rules become rectangles; and
-    images, diagrams, logos and gradients become pictures. Numbers that CSS
-    adds, such as the agenda's, become text.
-  - **PowerPoint, pictures** makes each slide one picture, at twice the
-    slide size (2560 × 1440 for 16:9), exactly like the PDF, but not
-    editable.
-  - Both carry the `!--` notes as speaker notes. The file says it comes
-    from PowerPoint 16, so current PowerPoint opens it without
-    compatibility mode.
-  - Fonts are named, not embedded: a computer without the template's
-    fonts (IBM Plex Sans in the default) shows another, and lines may
-    wrap differently. Each text box is a block of the slide, so an edited
-    paragraph does not push the ones below it down.
-  - The slide size carries over: 16:9 is PowerPoint's own widescreen size,
-    and A4 is A4. PowerPoint's 56-inch limit is kept by scaling.
-  - The status bar counts the slides as they export.
-- The **theme editor**: **Edit themes…** on a template in the inspector.
-  - It lists the theme's CSS custom properties (`--bg`, `--fg`, `--accent`
-    …) under the comments that group them, with a colour picker for each
-    colour. Changes save and show in the preview as you make them, and ⌘Z
-    in the CSS file undoes them.
-  - It shows the WCAG contrast of the text on the background, the muted
-    text, and the section slides' text, graded AAA, AA, AA large or fails.
-  - **Duplicate** makes a copy of the theme to change, leaving the
-    original alone. **Edit CSS** opens the file in the editor.
-  - If the slide you are on uses another theme, it says so, and offers to
-    use the edited theme for the presentation.
-
-## Presenting
-
-**▶ Present** in the toolbar (⌘↩) shows the deck full screen from the
-current slide; ⇧⌘↩ starts from the first. →, ↓, Space, Return and Page Down
-go forward; ←, ↑ and Page Up go back; Home and End jump to the ends. A click
-on the left third of the screen goes back, anywhere else forward. The slide
-number shows for a moment after each move, and the pointer hides. Esc ends
-the show on the slide you reached. Edits made while presenting, in another
-editor, show up live.
-
-## Sharing a presentation
-
-**Export ▾ ▸ Share as .inkdeck…** (also in the File menu) saves the whole
-presentation as one file to send: an `.inkdeck` is a zip of the pack, with
-`settings.toml`, `slides/`, `assets/` and `.templates/` (fonts included), in
-one folder named after the deck. It leaves out hidden files such as `.git`,
-and the PDFs, PowerPoint files and HTML that builds leave in the pack.
-
-Double-clicking an `.inkdeck`, or **File ▸ Open Shared Presentation…**, asks
-where to put it, next to the file by default, unpacks a copy there as a
-normal folder, and opens that. The `.inkdeck` itself is never changed. The
-unpacking refuses paths that leave the folder, links, more than 5000 files
-or 1 GB, and files without a `slides/` folder. `unzip` opens one too.
 
 ## Exporting with WebKit
 
