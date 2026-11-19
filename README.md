@@ -29,8 +29,21 @@ point it at a local clone: `go work init . ../inkpress`.
 ```sh
 make install          # build, sign, notarise and copy InkStudio.app to /Applications
 make dmg              # build/InkStudio-<version>.dmg, notarised, to share
-make release-check    # check the certificate and notarytool profile
+make release-check    # check everything a release needs
+make release          # publish the tagged HEAD: GitHub release and Homebrew cask
 ```
+
+Released versions install with Homebrew:
+
+```sh
+brew install --cask inkcheck/tap/inkstudio
+```
+
+`make release` builds and notarises the DMG from the tagged commit,
+attaches it to a GitHub release, and writes `Casks/inkstudio.rb` (from
+`packaging/inkstudio.rb`) to a clone of the tap at `../homebrew-tap`, or
+`TAP_DIR`, and pushes it. The cask installs the notarised app as it is,
+and inkline with it, for diagrams.
 
 `make app` builds `build/InkStudio.app`, one binary for Apple silicon and
 Intel, ad-hoc signed for this Mac. `make notarize`, `make dmg` and `make

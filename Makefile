@@ -1,7 +1,7 @@
 # InkStudio. Run `make` or `make help` for the list of targets.
 
 .DEFAULT_GOAL := help
-.PHONY: help frontend build run web snap test app notarize dmg install release-check icon clean
+.PHONY: help frontend build run web snap test app notarize dmg install release-check release icon clean
 
 export MACOSX_DEPLOYMENT_TARGET := 13.0
 export CGO_LDFLAGS := -mmacosx-version-min=13.0
@@ -49,8 +49,11 @@ dmg: app ## Make build/InkStudio-<version>.dmg, signed, notarised and stapled
 install: app ## Notarise the app and install it in /Applications
 	./scripts/package.sh install
 
-release-check: ## Check the certificate and notarytool profile signing needs
-	./scripts/package.sh check
+release-check: ## Check everything a release needs, without releasing
+	./scripts/release.sh check
+
+release: ## Release the tagged HEAD: a notarised DMG on GitHub, and the Homebrew cask
+	./scripts/release.sh publish
 
 icon: ## Redraw packaging/inkstudio.icns
 	@mkdir -p bin
