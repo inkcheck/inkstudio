@@ -184,7 +184,7 @@ or 1 GB, and files without a `slides/` folder. `unzip` opens one too.
 ```
 main.go              Wails app, menu, window, last-opened pack
 internal/studio/     the backend: pack files, rendering, watching, exports, HTTP API
-internal/pptx/       a PowerPoint writer: one picture and its notes per slide
+platform/pptx/       a PowerPoint writer, for any program: one picture and its notes per slide
 internal/odp/        the same for OpenDocument
 frontend/            Vite + TypeScript + CodeMirror 6
 ```

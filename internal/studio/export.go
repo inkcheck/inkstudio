@@ -17,7 +17,7 @@ import (
 	"github.com/inkcheck/inkpress/render"
 
 	"github.com/inkcheck/inkstudio/internal/odp"
-	"github.com/inkcheck/inkstudio/internal/pptx"
+	"github.com/inkcheck/inkstudio/platform/pptx"
 )
 
 // Format is an export format.
